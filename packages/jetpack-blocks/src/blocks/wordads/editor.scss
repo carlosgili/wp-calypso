@@ -30,6 +30,10 @@
 	.components-placeholder {
 		flex-grow: 2;
 	}
+
+	.components-toggle-control__label {
+		line-height: 1.4em;
+	}
 }
 
 .jetpack-wordads-leaderboard .components-placeholder {
@@ -37,7 +41,11 @@
 }
 
 .jetpack-wordads-mobile_leaderboard .components-placeholder {
-	min-height: 72px;
+	min-height: 90px;
+}
+
+.jetpack-wordads-wideskyscraper .components-form-toggle {
+	align-self: center;
 }
 
 .wp-block-jetpack-wordads__format-picker {

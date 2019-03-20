@@ -5,7 +5,8 @@
 import React, { Component, Fragment } from 'react';
 import { localize } from 'i18n-calypso';
 import { connect } from 'react-redux';
-import { flow, get, invoke, isEmpty, isEqual, pickBy } from 'lodash';
+import { flow, get, invoke, isEmpty, isEqual, pickBy, trim } from 'lodash';
+import url from 'url';
 
 /**
  * Internal dependencies
@@ -39,7 +40,10 @@ import {
 	SITE_IMPORTER_ERR_BAD_REMOTE,
 	SITE_IMPORTER_ERR_INVALID_URL,
 } from 'lib/importers/constants';
-import { prefetchmShotsPreview } from 'my-sites/importer/site-importer/site-preview-actions';
+import { loadmShotsPreview, prefetchmShotsPreview } from 'my-sites/importer/site-importer/site-preview-actions';
+import ImportUrlSitePreview from './site-preview';
+
+import SiteMockup from 'components/site-mockup';
 
 /**
  * Style dependencies
@@ -55,6 +59,10 @@ class ImportURLStepComponent extends Component {
 		// Url message could be client-side validation or server-side error.
 		showUrlMessage: false,
 		urlValidationMessage: '',
+		// We'll use this to determine whether or not
+		// the url has changed since showing a preview.
+		sitePreviewUrl: '',
+		sitePreviewImage: null,
 	};
 
 	componentDidMount() {
@@ -88,20 +96,94 @@ class ImportURLStepComponent extends Component {
 			return;
 		}
 
-		// We have a verified, importable site url.
-		SignupActions.submitSignupStep( { stepName }, [], {
-			importSiteDetails: siteDetails,
-			importUrl: siteDetails.siteUrl,
-			themeSlugWithRepo: 'pub/radcliffe-2',
-		} );
+		this.loadSitePreview();
 
-		goToNextStep();
+		// We have a verified, importable site url.
+		// SignupActions.submitSignupStep( { stepName }, [], {
+		// 	importSiteDetails: siteDetails,
+		// 	importUrl: siteDetails.siteUrl,
+		// 	themeSlugWithRepo: 'pub/radcliffe-2',
+		// } );
+
+		// goToNextStep();
 
 		// Defer the mshot call as to not compete with the flow transition
 		setTimeout( () => prefetchmShotsPreview( siteDetails.siteUrl ), 200 );
 	}
 
+	normalizeUrl( targetUrl ) {
+		const siteURL = trim( targetUrl );
+
+		if ( ! siteURL ) {
+			return;
+		}
+
+		const { hostname, pathname } = url.parse(
+			siteURL.startsWith( 'http' ) ? siteURL : 'https://' + siteURL
+		);
+
+		if ( ! hostname ) {
+			return;
+		}
+
+		return hostname + pathname;
+	}
+
+	loadSitePreview = () => {
+		this.setState( { loadingPreviewImage: true, previewStartTime: Date.now() } );
+
+		// console.log( this.props.siteDetails )
+
+		const normalizedUrl = this.normalizeUrl( this.props.urlInputValue );
+
+		// console.log( { normalizedUrl } );
+
+		loadmShotsPreview( {
+			url: normalizedUrl,
+			maxRetries: 30,
+			retryTimeout: 1000,
+		} )
+			.then( imageBlob => {
+				console.log( 'in then' );
+				this.setState( {
+					loadingPreviewImage: false,
+					sitePreviewImage: imageBlob,
+					sitePreviewUrl: normalizedUrl,
+					sitePreviewFailed: false,
+				} );
+
+
+				// this.props.recordTracksEvent( 'calypso_site_importer_site_preview_success', {
+				// 	blog_id: this.props.site.ID,
+				// 	site_url: this.state.siteURL,
+				// 	time_taken_ms: Date.now() - this.state.previewStartTime,
+				// } );
+			} )
+			.catch( () => {
+				console.log( 'in catch' );
+				this.setState( {
+					loadingPreviewImage: false,
+					sitePreviewImage: '',
+					sitePreviewFailed: true,
+				} );
+
+				// this.props.recordTracksEvent( 'calypso_site_importer_site_preview_fail', {
+				// 	blog_id: this.props.site.ID,
+				// 	site_url: this.state.siteURL,
+				// 	time_taken_ms: Date.now() - this.state.previewStartTime,
+				// } );
+			} );
+	};
+
 	handleInputChange = event => {
+		const normalizedUrl = this.normalizeUrl( event.target.value );
+
+		normalizedUrl !== this.state.sitePreviewUrl &&
+			this.setState( {
+				sitePreviewUrl: '',
+				sitePreviewImage: null,
+			} )
+
 		this.props.setNuxUrlInputValue( event.target.value );
 	};
 
@@ -202,6 +284,7 @@ class ImportURLStepComponent extends Component {
 
 	renderContent = () => {
 		const { isLoading, urlInputValue, translate } = this.props;
+		const { loadingPreviewImage } = this.state;
 		const { showUrlMessage } = this.state;
 		const urlMessage = this.getUrlMessage();
 
@@ -212,6 +295,7 @@ class ImportURLStepComponent extends Component {
 						<ScreenReaderText>
 							<FormLabel htmlFor="url-input">Site URL</FormLabel>
 						</ScreenReaderText>
+						{ /* xxx */ }
 
 						<FormTextInput
 							id="url-input"
@@ -252,7 +336,7 @@ class ImportURLStepComponent extends Component {
 					) }
 				</div>
 
-				<div className="import-url__example">
+				{ false && <div className="import-url__example">
 					<ul className="import-url__example-urls">
 						{ translate( 'Example URLs', {
 							comment: 'Title for list of example urls, such as "example.com"',
@@ -262,7 +346,23 @@ class ImportURLStepComponent extends Component {
 						<li className="import-url__example-url">{ EXAMPLE_WIX_URL }</li>
 					</ul>
 					<ExampleDomainBrowser className="import-url__example-browser" />
-				</div>
+				</div> }
+
+				<SiteMockup
+					size="desktop"
+					urlValue={ translate( 'Preview: %(url)s', {
+						args: {
+							url: this.props.urlInputValue,
+						}
+					} ) }
+					renderContent={ this.state.sitePreviewImage ? () => (
+						<ImportUrlSitePreview
+							imageSrc={ this.state.sitePreviewImage }
+							targetSiteUrl={ this.props.urlInputValue }
+							isLoading={ isLoading || loadingPreviewImage }
+						/>
+					) : null }
+				/>
 
 				<div className="import-url__escape">
 					{ translate(
@@ -291,16 +391,24 @@ class ImportURLStepComponent extends Component {
 	render() {
 		const { flowName, positionInFlow, signupProgress, stepName, translate } = this.props;
 
+		const hasSitePreview = this.state.sitePreviewImage;
+
+		const headerText = hasSitePreview
+			? translate( 'Is this your site?' )
+			: translate( 'Where can we find your old site?' );
+
+
+		const subHeaderText = ! hasSitePreview  &&
+			translate( "Enter your Wix site's URL, sometimes called a domain name or site address." )
+
 		return (
 			<StepWrapper
 				className="import-url"
 				flowName={ flowName }
 				stepName={ stepName }
 				positionInFlow={ positionInFlow }
-				headerText={ translate( 'Where can we find your old site?' ) }
-				subHeaderText={ translate(
-					"Enter your Wix site's URL, sometimes called a domain name or site address."
-				) }
+				headerText={ headerText }
+				subHeaderText={ subHeaderText }
 				signupProgress={ signupProgress }
 				stepContent={ this.renderContent() }
 			/>

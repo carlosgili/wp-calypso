@@ -8,14 +8,14 @@ import page from 'page';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import { compact, map, noop, reduce } from 'lodash';
+import { compact, get, last, map, noop, reduce } from 'lodash';
 import { connect } from 'react-redux';
 import { localize } from 'i18n-calypso';
+import formatCurrency from '@automattic/format-currency';
 
 /**
  * Internal dependencies
  */
-import formatCurrency from 'lib/format-currency';
 import FoldableCard from 'components/foldable-card';
 import Notice from 'components/notice';
 import PlanFeaturesActions from './actions';
@@ -38,6 +38,7 @@ import {
 	getMonthlyPlanByYearly,
 	getPlanPath,
 	isFreePlan,
+	getBiennialPlan,
 } from 'lib/plans';
 import {
 	getPlanDiscountedRawPrice,
@@ -159,6 +160,12 @@ export class PlanFeatures extends Component {
 		return true;
 	}
 
+	higherPlanAvailable() {
+		const currentPlan = get( this.props, 'sitePlan.product_slug', '' );
+		const highestPlan = last( this.props.planProperties );
+		return currentPlan !== highestPlan.planName && highestPlan.availableForPurchase;
+	}
+
 	renderCreditNotice() {
 		const {
 			canPurchase,
@@ -174,7 +181,8 @@ export class PlanFeatures extends Component {
 			! canPurchase ||
 			! bannerContainer ||
 			! showPlanCreditsApplied ||
-			! planCredits
+			! planCredits ||
+			! this.higherPlanAvailable()
 		) {
 			return null;
 		}
@@ -237,6 +245,7 @@ export class PlanFeatures extends Component {
 			selectedPlan,
 			translate,
 			showPlanCreditsApplied,
+			isLaunchPage,
 		} = this.props;
 
 		// move any free plan to last place in mobile view
@@ -269,6 +278,7 @@ export class PlanFeatures extends Component {
 				primaryUpgrade,
 				isPlaceholder,
 				hideMonthly,
+				countryCode,
 			} = properties;
 			const { rawPrice, discountPrice } = properties;
 			return (
@@ -293,6 +303,7 @@ export class PlanFeatures extends Component {
 						isInSignup={ isInSignup }
 						selectedPlan={ selectedPlan }
 						showPlanCreditsApplied={ true === showPlanCreditsApplied && ! this.hasDiscountNotice() }
+						countryCode={ countryCode }
 					/>
 					<p className="plan-features__description">{ planConstantObj.getDescription( abtest ) }</p>
 					<PlanFeaturesActions
@@ -303,6 +314,7 @@ export class PlanFeatures extends Component {
 						freePlan={ isFreePlan( planName ) }
 						isInSignup={ isInSignup }
 						isLandingPage={ isLandingPage }
+						isLaunchPage={ isLaunchPage }
 						isPlaceholder={ isPlaceholder }
 						isPopular={ popular }
 						onUpgradeClick={ onUpgradeClick }
@@ -336,6 +348,7 @@ export class PlanFeatures extends Component {
 			selectedPlan,
 			siteType,
 			showPlanCreditsApplied,
+			countryCode,
 		} = this.props;
 
 		return map( planProperties, properties => {
@@ -407,6 +420,7 @@ export class PlanFeatures extends Component {
 						selectedPlan={ selectedPlan }
 						showPlanCreditsApplied={ true === showPlanCreditsApplied && ! this.hasDiscountNotice() }
 						title={ planConstantObj.getTitle() }
+						countryCode={ countryCode }
 					/>
 				</td>
 			);
@@ -439,6 +453,7 @@ export class PlanFeatures extends Component {
 			disableBloggerPlanWithNonBlogDomain,
 			isInSignup,
 			isLandingPage,
+			isLaunchPage,
 			planProperties,
 			selectedPlan,
 			selectedSiteSlug,
@@ -488,6 +503,7 @@ export class PlanFeatures extends Component {
 						isPopular={ popular }
 						isInSignup={ isInSignup }
 						isLandingPage={ isLandingPage }
+						isLaunchPage={ isLaunchPage }
 						manageHref={ `/plans/my-plan/${ selectedSiteSlug }` }
 						onUpgradeClick={ onUpgradeClick }
 						planName={ planConstantObj.getTitle() }
@@ -573,6 +589,7 @@ export class PlanFeatures extends Component {
 			disableBloggerPlanWithNonBlogDomain,
 			isInSignup,
 			isLandingPage,
+			isLaunchPage,
 			planProperties,
 			selectedPlan,
 			selectedSiteSlug,
@@ -611,6 +628,7 @@ export class PlanFeatures extends Component {
 						freePlan={ isFreePlan( planName ) }
 						isInSignup={ isInSignup }
 						isLandingPage={ isLandingPage }
+						isLaunchPage={ isLaunchPage }
 						isPlaceholder={ isPlaceholder }
 						isPopular={ popular }
 						manageHref={ `/plans/my-plan/${ selectedSiteSlug }` }
@@ -648,6 +666,7 @@ PlanFeatures.propTypes = {
 	selectedPlan: PropTypes.string,
 	selectedSiteSlug: PropTypes.string,
 	siteId: PropTypes.number,
+	sitePlan: PropTypes.object,
 };
 
 PlanFeatures.defaultProps = {
@@ -690,6 +709,18 @@ export const calculatePlanCredits = ( state, siteId, planProperties ) =>
 
 const hasPlaceholders = planProperties =>
 	planProperties.filter( planProps => planProps.isPlaceholder ).length > 0;
+
+const maybeGetBiennialPlanSlugVersion = planSlug => {
+	// Test defaulting to the 2 year option for wpcom plans
+	if (
+		planMatches( planSlug, { group: GROUP_WPCOM } ) &&
+		'twoYearFlavor' === abtest( 'twoYearPlanByDefault' )
+	) {
+		planSlug = getBiennialPlan( planSlug ) || planSlug;
+	}
+
+	return planSlug;
+};
 
 /* eslint-disable wpcalypso/redux-no-bound-selectors */
 export default connect(
@@ -788,7 +819,9 @@ export default connect(
 					isPlaceholder,
 					onUpgradeClick: onUpgradeClick
 						? () => {
-								const planSlug = getPlanSlug( state, planProductId );
+								const planSlug = maybeGetBiennialPlanSlugVersion(
+									getPlanSlug( state, planProductId )
+								);
 
 								onUpgradeClick( getCartItemForPlan( planSlug ) );
 						  }
@@ -797,7 +830,9 @@ export default connect(
 									return;
 								}
 
-								page( `/checkout/${ selectedSiteSlug }/${ getPlanPath( plan ) || '' }` );
+								const planSlug = maybeGetBiennialPlanSlugVersion( plan );
+
+								page( `/checkout/${ selectedSiteSlug }/${ getPlanPath( planSlug ) || '' }` );
 						  },
 					planConstantObj,
 					planName: plan,
@@ -829,6 +864,7 @@ export default connect(
 			isJetpack,
 			planProperties,
 			selectedSiteSlug,
+			sitePlan,
 			siteType,
 			planCredits,
 			hasPlaceholders: hasPlaceholders( planProperties ),

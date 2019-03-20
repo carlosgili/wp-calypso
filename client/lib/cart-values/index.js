@@ -4,8 +4,8 @@
  * External dependencies
  */
 import url from 'url';
-import { extend, isArray, invert } from 'lodash';
-import update from 'immutability-helper';
+import { extend, get, isArray, invert } from 'lodash';
+import update, { extend as extendImmutabilityHelper } from 'immutability-helper';
 import i18n from 'i18n-calypso';
 import config from 'config';
 
@@ -13,19 +13,21 @@ import config from 'config';
  * Internal dependencies
  */
 import cartItems from './cart-items';
-import productsValues from 'lib/products-values';
+import { isCredits, isDomainRedemption, whitelistAttributes } from 'lib/products-values';
+
+// Auto-vivification from https://github.com/kolodny/immutability-helper#autovivification
+extendImmutabilityHelper( '$auto', function( value, object ) {
+	return object ? update( object, value ) : update( {}, value );
+} );
 
 // #tax-on-checout-placeholder
-import { reduxGetState } from 'lib/redux-bridge';
-import getPaymentCountryCode from 'state/selectors/get-payment-country-code';
-import getPaymentPostalCode from 'state/selectors/get-payment-postal-code';
+import { injectTaxStateWithPlaceholderValues } from 'lib/tax';
 
 const PAYMENT_METHODS = {
 	alipay: 'WPCOM_Billing_Stripe_Source_Alipay',
 	bancontact: 'WPCOM_Billing_Stripe_Source_Bancontact',
 	'credit-card': 'WPCOM_Billing_MoneyPress_Paygate',
 	ebanx: 'WPCOM_Billing_Ebanx',
-	'emergent-paywall': 'WPCOM_Billing_Emergent_Paywall',
 	eps: 'WPCOM_Billing_Stripe_Source_Eps',
 	giropay: 'WPCOM_Billing_Stripe_Source_Giropay',
 	ideal: 'WPCOM_Billing_Stripe_Source_Ideal',
@@ -61,31 +63,13 @@ function preprocessCartForServer( {
 	);
 	const urlCoupon = needsUrlCoupon ? url.parse( document.URL, true ).query.coupon : '';
 
-	// #tax-on-checout-placeholder
-	const reduxState = reduxGetState();
-	const placeholderTax =
-		tax ||
-		( reduxState
-			? {
-					location: {
-						country_code: getPaymentCountryCode( reduxState ),
-						postal_code: getPaymentPostalCode( reduxState ),
-					},
-			  }
-			: {
-					location: {
-						country_code: 'US',
-						postal_code: '90210',
-					},
-			  } );
-
 	return Object.assign(
 		{
 			coupon,
 			is_coupon_applied,
 			is_coupon_removed,
 			currency,
-			tax: placeholderTax,
+			tax: injectTaxStateWithPlaceholderValues( tax ), // #tax-on-checkout-placeholder
 			temporary,
 			extra,
 			products: products.map(
@@ -142,10 +126,28 @@ function removeCoupon() {
 	};
 }
 
+export const getTaxCountryCode = cart => get( cart, [ 'tax', 'location', 'country_code' ] );
+
+export const getTaxPostalCode = cart => get( cart, [ 'tax', 'location', 'postal_code' ] );
+
+export const getTaxLocation = cart => get( cart, [ 'tax', 'location' ], {} );
+
 function setTaxCountryCode( countryCode ) {
 	return function( cart ) {
 		return update( cart, {
-			tax: { location: { country_code: { $set: countryCode } } },
+			$auto: {
+				tax: {
+					$auto: {
+						location: {
+							$auto: {
+								country_code: {
+									$set: countryCode,
+								},
+							},
+						},
+					},
+				},
+			},
 		} );
 	};
 }
@@ -153,7 +155,19 @@ function setTaxCountryCode( countryCode ) {
 function setTaxPostalCode( postalCode ) {
 	return function( cart ) {
 		return update( cart, {
-			tax: { location: { postal_code: { $set: postalCode } } },
+			$auto: {
+				tax: {
+					$auto: {
+						location: {
+							$auto: {
+								postal_code: {
+									$set: postalCode,
+								},
+							},
+						},
+					},
+				},
+			},
 		} );
 	};
 }
@@ -161,21 +175,27 @@ function setTaxPostalCode( postalCode ) {
 function setTaxLocation( { postalCode, countryCode } ) {
 	return function( cart ) {
 		return update( cart, {
-			tax: { location: { $set: { postal_code: postalCode, country_code: countryCode } } },
+			$auto: {
+				tax: {
+					$auto: {
+						location: {
+							$auto: {
+								$set: { postal_code: postalCode, country_code: countryCode },
+							},
+						},
+					},
+				},
+			},
 		} );
 	};
 }
 
 function canRemoveFromCart( cart, cartItem ) {
-	if ( productsValues.isCredits( cartItem ) ) {
+	if ( isCredits( cartItem ) ) {
 		return false;
 	}
 
-	if (
-		cartItems.hasRenewalItem( cart ) &&
-		( productsValues.isPrivacyProtection( cartItem ) ||
-			productsValues.isDomainRedemption( cartItem ) )
-	) {
+	if ( cartItems.hasRenewalItem( cart ) && isDomainRedemption( cartItem ) ) {
 		return false;
 	}
 
@@ -240,7 +260,7 @@ function fillInAllCartItemAttributes( cart, products ) {
 
 function fillInSingleCartItemAttributes( cartItem, products ) {
 	const product = products[ cartItem.product_slug ];
-	const attributes = productsValues.whitelistAttributes( product );
+	const attributes = whitelistAttributes( product );
 
 	return extend( {}, cartItem, attributes );
 }
@@ -305,7 +325,6 @@ function paymentMethodName( method ) {
 		alipay: 'Alipay',
 		bancontact: 'Bancontact',
 		'credit-card': i18n.translate( 'Credit or debit card' ),
-		'emergent-paywall': 'Net Banking / Paytm / Debit Card',
 		eps: 'EPS',
 		giropay: 'Giropay',
 		ideal: 'iDEAL',
@@ -327,7 +346,6 @@ function isPaymentMethodEnabled( cart, method ) {
 		'alipay',
 		'bancontact',
 		'eps',
-		'emergent-paywall',
 		'giropay',
 		'ideal',
 		'paypal',
@@ -366,6 +384,15 @@ export function hasPendingPayment( cart ) {
 	}
 
 	return false;
+}
+
+export function shouldShowTax( cart ) {
+	// #tax-on-checkout-placeholder
+	if ( ! config.isEnabled( 'show-tax' ) ) {
+		return false;
+	}
+
+	return get( cart, [ 'tax', 'display_taxes' ], false );
 }
 
 export {

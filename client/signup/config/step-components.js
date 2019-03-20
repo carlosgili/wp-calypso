@@ -37,6 +37,7 @@ import UserSignupComponent from 'signup/steps/user';
 import PlansStepWithoutFreePlan from 'signup/steps/plans-without-free';
 import PlansAtomicStoreComponent from 'signup/steps/plans-atomic-store';
 import ReaderLandingStepComponent from 'signup/steps/reader-landing';
+import LaunchSiteComponent from 'signup/steps/launch-site';
 
 export default {
 	about: AboutStepComponent,
@@ -56,8 +57,14 @@ export default {
 	'domains-store': DomainsStepComponent,
 	'domain-only': DomainsStepComponent,
 	'domains-theme-preselected': DomainsStepComponent,
+	'domains-launch': DomainsStepComponent,
 	'from-url': ImportURLStepComponent,
+	launch: LaunchSiteComponent,
 	plans: PlansStepComponent,
+	'plans-launch': PlansStepComponent,
+	'plans-personal': PlansStepComponent,
+	'plans-premium': PlansStepComponent,
+	'plans-business': PlansStepComponent,
 	'plans-store-nux': PlansAtomicStoreComponent,
 	'plans-site-selected': PlansStepWithoutFreePlan,
 	site: SiteComponent,

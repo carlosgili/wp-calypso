@@ -21,36 +21,30 @@ export function generateFlows( { getSiteDestination = noop, getPostsDestination 
 		},
 
 		business: {
-			steps: [ 'user', 'about', 'themes', 'domains' ],
-			destination: function( dependencies ) {
-				return '/plans/select/business/' + dependencies.siteSlug;
-			},
+			steps: [ 'user', 'about', 'plans-business', 'themes', 'domains' ],
+			destination: getSiteDestination,
 			description: 'Create an account and a blog and then add the business plan to the users cart.',
-			lastModified: '2018-01-24',
+			lastModified: '2019-03-04',
 			meta: {
 				skipBundlingPlan: true,
 			},
 		},
 
 		premium: {
-			steps: [ 'user', 'about', 'themes', 'domains' ],
-			destination: function( dependencies ) {
-				return '/plans/select/premium/' + dependencies.siteSlug;
-			},
+			steps: [ 'user', 'about', 'plans-premium', 'themes', 'domains' ],
+			destination: getSiteDestination,
 			description: 'Create an account and a blog and then add the premium plan to the users cart.',
-			lastModified: '2018-01-24',
+			lastModified: '2019-03-04',
 			meta: {
 				skipBundlingPlan: true,
 			},
 		},
 
 		personal: {
-			steps: [ 'user', 'about', 'themes', 'domains' ],
-			destination: function( dependencies ) {
-				return '/plans/select/personal/' + dependencies.siteSlug;
-			},
+			steps: [ 'user', 'about', 'plans-personal', 'themes', 'domains' ],
+			destination: getSiteDestination,
 			description: 'Create an account and a blog and then add the personal plan to the users cart.',
-			lastModified: '2018-11-09',
+			lastModified: '2019-03-04',
 		},
 
 		free: {
@@ -94,7 +88,7 @@ export function generateFlows( { getSiteDestination = noop, getPostsDestination 
 		},
 
 		subdomain: {
-			steps: [ 'design-type', 'themes', 'domains', 'plans', 'user' ],
+			steps: [ 'design-type', 'themes', 'site-topic', 'domains', 'plans', 'user' ],
 			destination: getSiteDestination,
 			description: 'Provide a vertical for subdomains',
 			lastModified: '2016-10-31',
@@ -120,8 +114,6 @@ export function generateFlows( { getSiteDestination = noop, getPostsDestination 
 				'site-type',
 				'site-topic-with-preview',
 				'site-information-title-with-preview',
-				'site-information-address-with-preview',
-				'site-information-phone-with-preview',
 				'domains-with-preview',
 				'plans',
 			],
@@ -137,8 +129,6 @@ export function generateFlows( { getSiteDestination = noop, getPostsDestination 
 				'site-topic-with-preview',
 				'site-style-with-preview',
 				'site-information-title-with-preview',
-				'site-information-address-with-preview',
-				'site-information-phone-with-preview',
 				'domains-with-preview',
 				'plans',
 			],
@@ -326,12 +316,20 @@ export function generateFlows( { getSiteDestination = noop, getPostsDestination 
 		lastModified: '2018-10-22',
 	};
 
+	flows[ 'launch-site' ] = {
+		steps: [ 'domains-launch', 'plans-launch', 'launch' ],
+		destination: getSiteDestination,
+		description: 'A flow to launch a private site.',
+		providesDependenciesInQuery: [ 'siteSlug' ],
+		lastModified: '2019-01-16',
+	};
+
 	flows.import = {
 		steps: [ 'from-url', 'user', 'domains' ],
 		destination: ( { importSiteDetails, importUrl, siteSlug } ) =>
 			addQueryArgs(
 				{
-					engine: importSiteDetails.engine === 'wix' ? 'wix' : null,
+					engine: importSiteDetails.engine || null,
 					'from-site': ( importUrl && encodeURIComponent( importUrl ) ) || null,
 				},
 				`/settings/import/${ siteSlug }`

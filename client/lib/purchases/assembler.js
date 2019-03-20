@@ -32,7 +32,6 @@ function createPurchaseObject( purchase ) {
 		expiryDate: purchase.expiry_date,
 		expiryMoment: purchase.expiry_date ? i18n.moment( purchase.expiry_date ) : null,
 		expiryStatus: camelCase( purchase.expiry_status ),
-		hasPrivacyProtection: Boolean( purchase.has_private_registration ),
 		includedDomain: purchase.included_domain,
 		includedDomainPurchaseAmount: purchase.included_domain_purchase_amount,
 		isCancelable: Boolean( purchase.is_cancelable ),
@@ -64,6 +63,8 @@ function createPurchaseObject( purchase ) {
 		subscribedDate: purchase.subscribed_date,
 		subscriptionStatus: purchase.subscription_status,
 		tagLine: purchase.tag_line,
+		taxAmount: purchase.tax_amount,
+		taxText: purchase.tax_text,
 		userId: Number( purchase.user_id ),
 	};
 

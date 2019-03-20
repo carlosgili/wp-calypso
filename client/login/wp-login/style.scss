@@ -1,12 +1,25 @@
 $image-height: 47px;
 
-.is-section-login {
+.layout.is-section-login {
 	padding-bottom: $image-height;
 	position: relative;
 	min-height: calc( 100% - #{$image-height} );
 
 	.layout__content {
 		position: static;
+	}
+
+	&.has-no-masterbar {
+		.layout__content {
+			// Adjust the padding as we no longer
+			// show the masterbar.
+			padding-top: 48px;
+		}
+
+		// Hide the masterbar for real
+		.masterbar {
+			display: none;
+		}
 	}
 }
 
@@ -46,7 +59,7 @@ $image-height: 47px;
 		font-weight: 500;
 		line-height: 4em;
 		padding: 0 24px;
-		text-align: left;
+		text-align: center;
 		width: 100%;
 
 		body.is-section-signup & {

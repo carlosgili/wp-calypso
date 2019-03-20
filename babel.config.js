@@ -8,9 +8,8 @@ const isBrowser = isCalypsoClient || 'true' === process.env.TARGET_BROWSER;
 const modules = isBrowser ? false : 'commonjs'; // Use commonjs for Node
 const codeSplit = require( './server/config' ).isEnabled( 'code-splitting' );
 
-const targets = isBrowser
-	? { browsers: [ 'last 2 versions', 'Safari >= 10', 'iOS >= 10', 'ie >= 11' ] }
-	: { node: 'current' };
+// Use target configuration in package.json for browser builds.
+const targets = isBrowser ? undefined : { node: 'current' };
 
 const config = {
 	presets: [
@@ -20,7 +19,10 @@ const config = {
 				modules,
 				targets,
 				useBuiltIns: 'entry',
-				shippedProposals: true, // allows es7 features like Promise.prototype.finally
+				// allows es7 features like Promise.prototype.finally
+				shippedProposals: true,
+				// Exclude transforms that make all code slower, see https://github.com/facebook/create-react-app/pull/5278
+				exclude: [ 'transform-typeof-symbol' ],
 			},
 		],
 		'@babel/react',
@@ -53,7 +55,7 @@ const config = {
 	] ),
 	overrides: [
 		{
-			test: './client/gutenberg/extensions',
+			test: [ './client/gutenberg/extensions', './packages/jetpack-blocks' ],
 			plugins: [
 				[
 					'@wordpress/import-jsx-pragma',

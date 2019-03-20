@@ -3,7 +3,7 @@
 /**
  * External dependencies
  */
-import { assign, flowRight } from 'lodash';
+import { assign, flowRight, get } from 'lodash';
 import i18n from 'i18n-calypso';
 import Dispatcher from 'dispatcher';
 import { TRANSACTION_STEP_SET } from 'lib/upgrades/action-types';
@@ -14,6 +14,7 @@ import debugFactory from 'debug';
  */
 import Emitter from 'lib/mixins/emitter';
 import { preprocessCartForServer } from 'lib/cart-values';
+import { injectCartWithPlaceholderTaxValues } from 'lib/tax'; // #tax-on-checkout-placeholder
 
 /**
  * Internal dependencies
@@ -21,19 +22,15 @@ import { preprocessCartForServer } from 'lib/cart-values';
 const debug = debugFactory( 'calypso:cart-data:cart-synchronizer' );
 
 function preprocessCartFromServer( cart ) {
-	// #tax-on-checkout-placeholder
-	const taxOnCheckoutPlaceholder = {
-		sub_total: cart.total_cost,
-		sub_total_display: cart.total_cost_display,
-		total_tax: cart.total_cost,
-		total_tax_display: cart.total_cost_display,
-	};
-
-	// #tax-on-checkout-placeholder
-	return assign( {}, taxOnCheckoutPlaceholder, cart, {
-		client_metadata: createClientMetadata(),
-		products: castProductIDsToNumbers( cart.products ),
-	} );
+	return assign(
+		{},
+		injectCartWithPlaceholderTaxValues( cart ), // #tax-on-checkout-placeholder (to remove: drop function call, keep `cart`)
+		{
+			client_metadata: createClientMetadata(),
+			products: castProductIDsToNumbers( cart.products ),
+			tax: castTaxObject( cart.tax ), // cast tax.location to object
+		},
+	);
 }
 
 // Add a server response date so we can distinguish between carts with the
@@ -51,6 +48,16 @@ function castProductIDsToNumbers( cartItems ) {
 	return cartItems.map( function( item ) {
 		return assign( {}, item, { product_id: parseInt( item.product_id, 10 ) } );
 	} );
+}
+
+// The API is returning arrays for location that mess with our
+// immutability-helper functions, so we need to make sure to convert
+// these to objects. We should be able to remove this after that's fixed.
+function castTaxObject( tax ) {
+	return {
+		...tax,
+		location: { ...get( tax, 'location' ) }, // cast location to object
+	}
 }
 
 function CartSynchronizer( cartKey, wpcom ) {

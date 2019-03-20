@@ -7,6 +7,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
+import { startsWith } from 'lodash';
 import classnames from 'classnames';
 
 /**
@@ -16,7 +17,6 @@ import AsyncLoad from 'components/async-load';
 import MasterbarLoggedIn from 'layout/masterbar/logged-in';
 import GlobalNotices from 'components/global-notices';
 import notices from 'notices';
-import TranslatorLauncher from './community-translator/launcher';
 import config from 'config';
 import PulsingDot from 'components/pulsing-dot';
 import OfflineStatus from 'layout/offline-status';
@@ -33,6 +33,8 @@ import {
 	isSectionLoading,
 } from 'state/ui/selectors';
 import isHappychatOpen from 'state/happychat/selectors/is-happychat-open';
+import { isJetpackSite } from 'state/sites/selectors';
+import { isSupportSession } from 'state/support/selectors';
 import SitePreview from 'blocks/site-preview';
 import SupportArticleDialog from 'blocks/support-article-dialog';
 import { getCurrentLayoutFocus } from 'state/ui/layout-focus/selectors';
@@ -48,6 +50,7 @@ import SupportUser from 'support/support-user';
 import { isCommunityTranslatorEnabled } from 'components/community-translator/utils';
 import { isE2ETest } from 'lib/e2e';
 import BodySectionCssClass from './body-section-css-class';
+import { retrieveMobileRedirect } from 'jetpack-connect/persistence-utils';
 
 class Layout extends Component {
 	static displayName = 'Layout';
@@ -58,7 +61,7 @@ class Layout extends Component {
 		// connected props
 		masterbarIsHidden: PropTypes.bool,
 		isLoading: PropTypes.bool,
-		isSupportUser: PropTypes.bool,
+		isSupportSession: PropTypes.bool,
 		isOffline: PropTypes.bool,
 		sectionGroup: PropTypes.string,
 		sectionName: PropTypes.string,
@@ -100,10 +103,13 @@ class Layout extends Component {
 				`is-group-${ this.props.sectionGroup }`,
 				`is-section-${ this.props.sectionName }`,
 				`focus-${ this.props.currentLayoutFocus }`,
-				{ 'is-support-user': this.props.isSupportUser },
+				{ 'is-add-site-page': this.props.currentRoute === '/jetpack/new' },
+				{ 'is-support-session': this.props.isSupportSession },
 				{ 'has-no-sidebar': ! this.props.hasSidebar },
 				{ 'has-chat': this.props.chatIsOpen },
-				{ 'has-no-masterbar': this.props.masterbarIsHidden }
+				{ 'has-no-masterbar': this.props.masterbarIsHidden },
+				{ 'is-jetpack-site': this.props.isJetpack },
+				{ 'is-jetpack-mobile-flow': this.props.isJetpackMobileFlow }
 			),
 			loadingClass = classnames( {
 				layout__loader: true,
@@ -115,7 +121,7 @@ class Layout extends Component {
 				<BodySectionCssClass group={ this.props.sectionGroup } section={ this.props.sectionName } />
 				<DocumentHead />
 				<QuerySites primaryAndRecent />
-				<QuerySites allSites />
+				{ this.props.shouldQueryAllSites && <QuerySites allSites /> }
 				<QueryPreferences />
 				<QuerySiteSelectedEditor siteId={ this.props.siteId } />
 				<AsyncLoad require="layout/guided-tours" placeholder={ null } />
@@ -132,12 +138,7 @@ class Layout extends Component {
 				{ this.props.isOffline && <OfflineStatus /> }
 				<div id="content" className="layout__content">
 					{ config.isEnabled( 'jitms' ) && <JITM /> }
-					<GlobalNotices
-						id="notices"
-						notices={ notices.list }
-						forcePinned={ 'post' === this.props.sectionName }
-					/>
-
+					<GlobalNotices id="notices" notices={ notices.list } />
 					<div id="secondary" className="layout__secondary" role="navigation">
 						{ this.props.secondary }
 					</div>
@@ -148,7 +149,7 @@ class Layout extends Component {
 				{ config.isEnabled( 'i18n/community-translator' ) ? (
 					isCommunityTranslatorEnabled() && <AsyncLoad require="components/community-translator" />
 				) : (
-					<TranslatorLauncher />
+					<AsyncLoad require="layout/community-translator/launcher" placeholder={ null } />
 				) }
 				{ this.props.sectionGroup === 'sites' && <SitePreview /> }
 				{ config.isEnabled( 'happychat' ) && this.props.chatIsOpen && (
@@ -173,10 +174,21 @@ class Layout extends Component {
 export default connect( state => {
 	const sectionGroup = getSectionGroup( state );
 	const sectionName = getSectionName( state );
+	const currentRoute = getCurrentRoute( state );
+	const siteId = getSelectedSiteId( state );
+	const isJetpack = isJetpackSite( state, siteId );
+	const noMasterbarForCheckout = isJetpack && startsWith( currentRoute, '/checkout' );
+	const noMasterbarForRoute = currentRoute === '/log-in/jetpack' || noMasterbarForCheckout;
+	const noMasterbarForSection = 'signup' === sectionName || 'jetpack-connect' === sectionName;
+	const isJetpackMobileFlow = 'jetpack-connect' === sectionName && !! retrieveMobileRedirect();
+
 	return {
-		masterbarIsHidden: ! masterbarIsVisible( state ) || 'signup' === sectionName,
+		masterbarIsHidden:
+			! masterbarIsVisible( state ) || noMasterbarForSection || noMasterbarForRoute,
+		isJetpack,
+		isJetpackMobileFlow,
 		isLoading: isSectionLoading( state ),
-		isSupportUser: state.support.isSupportUser,
+		isSupportSession: isSupportSession( state ),
 		sectionGroup,
 		sectionName,
 		hasSidebar: hasSidebar( state ),
@@ -184,7 +196,13 @@ export default connect( state => {
 		currentLayoutFocus: getCurrentLayoutFocus( state ),
 		chatIsOpen: isHappychatOpen( state ),
 		colorSchemePreference: getPreference( state, 'colorScheme' ),
-		currentRoute: getCurrentRoute( state ),
-		siteId: getSelectedSiteId( state ),
+		currentRoute,
+		siteId,
+		/* We avoid requesting sites in the Jetpack Connect authorization step, because this would
+		request all sites before authorization has finished. That would cause the "all sites"
+		request to lack the newly authorized site, and when the request finishes after
+		authorization, it would remove the newly connected site that has been fetched separately.
+		See https://github.com/Automattic/wp-calypso/pull/31277 for more details. */
+		shouldQueryAllSites: currentRoute && currentRoute !== '/jetpack/connect/authorize',
 	};
 } )( Layout );

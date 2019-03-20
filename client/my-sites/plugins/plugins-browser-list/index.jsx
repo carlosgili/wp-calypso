@@ -1,4 +1,3 @@
-/** @format */
 /**
  * External dependencies
  */
@@ -13,6 +12,11 @@ import PluginBrowserItem from 'my-sites/plugins/plugins-browser-item';
 import Card from 'components/card';
 import Gridicon from 'gridicons';
 import SectionHeader from 'components/section-header';
+
+/**
+ * Style dependencies
+ */
+import './style.scss';
 
 const DEFAULT_PLACEHOLDER_NUMBER = 6;
 
@@ -29,6 +33,7 @@ class PluginsBrowserList extends Component {
 					key={ plugin.slug + n }
 					plugin={ plugin }
 					currentSites={ this.props.currentSites }
+					listName={ this.props.listName }
 				/>
 			);
 		} );
@@ -39,9 +44,11 @@ class PluginsBrowserList extends Component {
 
 		// We need to complete the list with empty elements to keep the grid drawn.
 		while ( pluginsViewsList.length % 3 !== 0 || pluginsViewsList.length % 2 !== 0 ) {
+			/* eslint-disable wpcalypso/jsx-classname-namespace */
 			pluginsViewsList.push(
 				<div className="plugins-browser-item is-empty" key={ 'empty-item-' + emptyCounter++ } />
 			);
+			/* eslint-enable wpcalypso/jsx-classname-namespace */
 		}
 
 		if ( this.props.size ) {

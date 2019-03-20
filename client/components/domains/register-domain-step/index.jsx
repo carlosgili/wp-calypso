@@ -39,12 +39,18 @@ import Card from 'components/card';
 import CompactCard from 'components/card/compact';
 import Notice from 'components/notice';
 import StickyPanel from 'components/sticky-panel';
-import { checkDomainAvailability, getFixedDomainSearch, getAvailableTlds } from 'lib/domains';
+import {
+	checkDomainAvailability,
+	getFixedDomainSearch,
+	getAvailableTlds,
+	getDomainSuggestionSearch,
+} from 'lib/domains';
 import { domainAvailability } from 'lib/domains/constants';
 import { getAvailabilityNotice } from 'lib/domains/registration/availability-messages';
 import Search from 'components/search';
 import DomainRegistrationSuggestion from 'components/domains/domain-registration-suggestion';
 import DomainTransferSuggestion from 'components/domains/domain-transfer-suggestion';
+import DomainSkipSuggestion from 'components/domains/domain-skip-suggestion';
 import DomainSuggestion from 'components/domains/domain-suggestion';
 import DomainSearchResults from 'components/domains/domain-search-results';
 import ExampleDomainSuggestions from 'components/domains/example-domain-suggestions';
@@ -85,6 +91,11 @@ import {
 import Spinner from 'components/spinner';
 import { getSuggestionsVendor } from 'lib/domains/suggestions';
 import { isBlogger } from 'lib/products-values';
+
+/**
+ * Style dependencies
+ */
+import './style.scss';
 
 const debug = debugFactory( 'calypso:domains:register-domain-step' );
 
@@ -314,6 +325,7 @@ class RegisterDomainStep extends React.Component {
 
 		if (
 			this.props.selectedSite &&
+			prevProps.selectedSite &&
 			this.props.selectedSite.domain !== prevProps.selectedSite.domain
 		) {
 			this.focusSearchCard();
@@ -524,7 +536,7 @@ class RegisterDomainStep extends React.Component {
 		this.save();
 
 		const { lastQuery } = this.state;
-		const loadingResults = Boolean( getFixedDomainSearch( lastQuery ) );
+		const loadingResults = Boolean( getDomainSuggestionSearch( lastQuery, MIN_QUERY_LENGTH ) );
 
 		const nextState = {
 			availabilityError: null,
@@ -610,11 +622,7 @@ class RegisterDomainStep extends React.Component {
 			return;
 		}
 
-		let cleanedQuery = getFixedDomainSearch( searchQuery );
-		if ( cleanedQuery.length < MIN_QUERY_LENGTH ) {
-			cleanedQuery = '';
-		}
-
+		const cleanedQuery = getDomainSuggestionSearch( searchQuery, MIN_QUERY_LENGTH );
 		const loadingResults = Boolean( cleanedQuery );
 
 		this.setState(
@@ -909,10 +917,7 @@ class RegisterDomainStep extends React.Component {
 	onSearch = ( searchQuery, { shouldQuerySubdomains = true } = {} ) => {
 		debug( 'onSearch handler was triggered with query', searchQuery );
 
-		let domain = getFixedDomainSearch( searchQuery );
-		if ( domain.length < MIN_QUERY_LENGTH ) {
-			domain = '';
-		}
+		const domain = getDomainSuggestionSearch( searchQuery, MIN_QUERY_LENGTH );
 
 		this.setState(
 			{
@@ -977,6 +982,7 @@ class RegisterDomainStep extends React.Component {
 		let domainRegistrationSuggestions;
 		let domainUnavailableSuggestion;
 		let suggestions;
+		let domainSkipPurchase;
 
 		if ( this.isLoadingSuggestions() || isEmpty( this.props.products ) ) {
 			domainRegistrationSuggestions = times( INITIAL_SUGGESTION_QUANTITY + 1, function( n ) {
@@ -1008,6 +1014,13 @@ class RegisterDomainStep extends React.Component {
 					tracksButtonClickSource="initial-suggestions-bottom"
 				/>
 			);
+
+			domainSkipPurchase = (
+				<DomainSkipSuggestion
+					selectedSiteSlug={ this.props.selectedSite.slug }
+					onButtonClick={ this.props.onSkip }
+				/>
+			);
 		}
 
 		return (
@@ -1017,6 +1030,7 @@ class RegisterDomainStep extends React.Component {
 			>
 				{ domainRegistrationSuggestions }
 				{ domainUnavailableSuggestion }
+				{ this.props.showSkipButton && domainSkipPurchase }
 			</div>
 		);
 	}

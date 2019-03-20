@@ -12,7 +12,7 @@ import { snakeCase, includes } from 'lodash';
 /**
  * Internal dependencies
  */
-import { localize, translate } from 'i18n-calypso';
+import { localize } from 'i18n-calypso';
 import Card from 'components/card';
 import NavItem from 'components/section-nav/item';
 import NavTabs from 'components/section-nav/tabs';
@@ -69,22 +69,6 @@ export class PaymentBox extends PureComponent {
 				labelLogo = <Gridicon icon="credit-card" className="checkout__credit-card" />;
 				labelAdditionalText = paymentMethodName( method );
 				break;
-			case 'emergent-paywall':
-				const paytmLogo = (
-					<img
-						src="/calypso/images/upgrades/paytm.svg"
-						alt="paytm"
-						className="checkout__paytm"
-						key="paytm"
-					/>
-				);
-
-				labelLogo = (
-					<span className="checkout__emergent-paywall">
-						{ paytmLogo } / Net banking / Debit card
-					</span>
-				);
-				break;
 			case 'ideal':
 			case 'brazil-tef':
 			case 'wechat':
@@ -110,7 +94,7 @@ export class PaymentBox extends PureComponent {
 						break;
 				}
 
-				labelAdditionalText = getWebPaymentMethodName( webPaymentMethod );
+				labelAdditionalText = getWebPaymentMethodName( webPaymentMethod, this.props.translate );
 				break;
 		}
 
@@ -158,12 +142,12 @@ export class PaymentBox extends PureComponent {
 			contentClass = classNames( 'payment-box__content', this.props.contentClassSet );
 
 		const titleText = this.props.currentPaymentMethod
-			? translate( 'Pay with %(paymentMethod)s', {
+			? this.props.translate( 'Pay with %(paymentMethod)s', {
 					args: {
 						paymentMethod: paymentMethodName( this.props.currentPaymentMethod ),
 					},
 			  } )
-			: translate( 'Loading…' );
+			: this.props.translate( 'Loading…' );
 
 		const paymentMethods = this.getPaymentMethods();
 

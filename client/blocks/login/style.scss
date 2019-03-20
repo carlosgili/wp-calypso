@@ -1,4 +1,3 @@
-
 .login {
 	&.is-jetpack {
 		.button.is-primary {
@@ -27,7 +26,7 @@
 		margin-bottom: 20px;
 		transition: none;
 
-		/*rtl:ignore*/
+		/*!rtl:ignore*/
 		direction: ltr;
 
 		&.is-error {
@@ -46,8 +45,6 @@
 }
 
 .login__form-action {
-	margin-top: 10px;
-	overflow: auto;
 
 	button {
 		width: 100%;
@@ -91,7 +88,7 @@
 		a,
 		a:hover {
 			pointer-events: none;
-			color: $gray;
+			color: var( --color-neutral-light );
 		}
 	}
 }
@@ -145,7 +142,7 @@
 	position: relative;
 	white-space: nowrap;
 	&::after {
-		@include long-content-fade( $color: hex-to-rgb( $gray-light ) );
+		@include long-content-fade( $color: var( --color-neutral-0-rgb ) );
 	}
 }
 
@@ -160,10 +157,10 @@
 }
 
 .card.two-factor-authentication__form-action {
-	background: $white;
+	background: var( --color-white );
 
 	button {
-		color: $link-highlight;
+		color: var( --color-link-dark );
 		cursor: pointer;
 
 		&:hover {
@@ -186,8 +183,8 @@
 	text-transform: uppercase;
 
 	span {
-		background: $white;
-		color: $gray;
+		background: var( --color-white );
+		color: var( --color-neutral-light );
 		font-size: 14px;
 		padding-left: 8px;
 		padding-right: 8px;

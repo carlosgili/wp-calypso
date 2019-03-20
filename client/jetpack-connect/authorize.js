@@ -8,7 +8,7 @@ import debugModule from 'debug';
 import Gridicon from 'gridicons';
 import page from 'page';
 import { connect } from 'react-redux';
-import { get, includes, startsWith } from 'lodash';
+import { flowRight, get, includes, startsWith } from 'lodash';
 import { localize } from 'i18n-calypso';
 import urlUtils from 'url';
 
@@ -17,6 +17,7 @@ import urlUtils from 'url';
  */
 import AuthFormHeader from './auth-form-header';
 import Button from 'components/button';
+import canCurrentUser from 'state/selectors/can-current-user';
 import Card from 'components/card';
 import config from 'config';
 import Disclaimer from './disclaimer';
@@ -24,6 +25,7 @@ import FormLabel from 'components/forms/form-label';
 import FormSettingExplanation from 'components/forms/form-setting-explanation';
 import Gravatar from 'components/gravatar';
 import HelpButton from './help-button';
+import isSiteAutomatedTransfer from 'state/selectors/is-site-automated-transfer';
 import isVipSite from 'state/selectors/is-vip-site';
 import JetpackConnectHappychatButton from './happychat-button';
 import JetpackConnectNotices from './jetpack-connect-notices';
@@ -34,17 +36,16 @@ import MainWrapper from './main-wrapper';
 import QueryUserConnection from 'components/data/query-user-connection';
 import Spinner from 'components/spinner';
 import userUtilities from 'lib/user/utils';
+import versionCompare from 'lib/version-compare';
+import withTrackingTool from 'lib/analytics/with-tracking-tool';
 import { addQueryArgs, externalRedirect } from 'lib/route';
 import { authQueryPropTypes, getRoleFromScope } from './utils';
 import { decodeEntities } from 'lib/formatting';
 import { getCurrentUser } from 'state/current-user/selectors';
 import { isRequestingSite, isRequestingSites } from 'state/sites/selectors';
-import { JPC_PATH_PLANS, REMOTE_PATH_AUTH } from './constants';
+import { JPC_PATH_PLANS, JPC_PATH_SITE_TYPE, REMOTE_PATH_AUTH } from './constants';
 import { login } from 'lib/paths';
-import {
-	loadTrackingTool,
-	recordTracksEvent as recordTracksEventAction,
-} from 'state/analytics/actions';
+import { recordTracksEvent as recordTracksEventAction } from 'state/analytics/actions';
 import { urlToSlug } from 'lib/url';
 import {
 	ALREADY_CONNECTED,
@@ -172,7 +173,6 @@ export class JetpackAuthorize extends Component {
 	}
 
 	componentDidMount() {
-		this.props.loadTrackingTool( 'HotJar' );
 		this.trackAffiliate();
 	}
 
@@ -576,8 +576,8 @@ export class JetpackAuthorize extends Component {
 	}
 
 	getRedirectionTarget() {
-		const { clientId, homeUrl, redirectAfterAuth } = this.props.authQuery;
-		const { partnerSlug } = this.props;
+		const { clientId, homeUrl, jpVersion, redirectAfterAuth } = this.props.authQuery;
+		const { canManageOptions, isAtomic, partnerSlug } = this.props;
 
 		// Redirect sites hosted on Pressable with a partner plan to some URL.
 		if (
@@ -587,9 +587,15 @@ export class JetpackAuthorize extends Component {
 			return `/start/pressable-nux?blogid=${ clientId }`;
 		}
 
+		const isJetpackVersionSupported = versionCompare( jpVersion, '7.1-alpha', '>=' );
+		const nextRoute =
+			isJetpackVersionSupported && canManageOptions && ! isAtomic
+				? JPC_PATH_SITE_TYPE
+				: JPC_PATH_PLANS;
+
 		return addQueryArgs(
 			{ redirect: redirectAfterAuth },
-			`${ JPC_PATH_PLANS }/${ urlToSlug( homeUrl ) }`
+			`${ nextRoute }/${ urlToSlug( homeUrl ) }`
 		);
 	}
 
@@ -692,7 +698,7 @@ export class JetpackAuthorize extends Component {
 	}
 }
 
-export default connect(
+const connectComponent = connect(
 	( state, { authQuery } ) => {
 		// Note: reading from a cookie here rather than redux state,
 		// so any change in value will not execute connect().
@@ -703,9 +709,11 @@ export default connect(
 			authAttempts: getAuthAttempts( state, urlToSlug( authQuery.site ) ),
 			authorizationData: getAuthorizationData( state ),
 			calypsoStartedConnection: isCalypsoStartedConnection( authQuery.site ),
+			canManageOptions: canCurrentUser( state, authQuery.clientId, 'manage_options' ),
 			hasExpiredSecretError: hasExpiredSecretErrorSelector( state ),
 			hasXmlrpcError: hasXmlrpcErrorSelector( state ),
 			isAlreadyOnSitesList: isRemoteSiteOnSitesList( state, authQuery.site ),
+			isAtomic: isSiteAutomatedTransfer( state, authQuery.clientId ),
 			isFetchingAuthorizationSite: isRequestingSite( state, authQuery.clientId ),
 			isFetchingSites: isRequestingSites( state ),
 			isMobileAppFlow,
@@ -719,9 +727,14 @@ export default connect(
 	},
 	{
 		authorize: authorizeAction,
-		loadTrackingTool,
 		recordTracksEvent: recordTracksEventAction,
 		retryAuth: retryAuthAction,
 		trackAffiliateReferral: affiliateReferral,
 	}
-)( localize( JetpackAuthorize ) );
+);
+
+export default flowRight(
+	connectComponent,
+	localize,
+	withTrackingTool( 'HotJar' )
+)( JetpackAuthorize );

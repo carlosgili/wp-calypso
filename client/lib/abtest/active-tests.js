@@ -1,10 +1,10 @@
 /** @format */
 export default {
 	improvedOnboarding: {
-		datestamp: '20190131',
+		datestamp: '20190314',
 		variations: {
-			main: 50,
-			onboarding: 50,
+			main: 0,
+			onboarding: 100,
 		},
 		defaultVariation: 'main',
 	},
@@ -72,29 +72,11 @@ export default {
 		allowExistingUsers: true,
 		localeTargets: 'any',
 	},
-	jetpackFreePlanButtonPosition: {
-		datestamp: '20181212',
-		variations: {
-			locationTop: 50,
-			locationBottom: 50,
-		},
-		defaultVariation: 'locationBottom',
-		allowExistingUsers: true,
-	},
 	showConciergeSessionUpsell: {
 		datestamp: '20181214',
 		variations: {
 			skip: 100,
 			show: 0,
-		},
-		defaultVariation: 'skip',
-		allowExistingUsers: true,
-	},
-	showConciergeSessionUpsellNonGSuite: {
-		datestamp: '20181228',
-		variations: {
-			skip: 50,
-			show: 50,
 		},
 		defaultVariation: 'skip',
 		allowExistingUsers: true,
@@ -106,14 +88,6 @@ export default {
 			googleMyBusinessBanner: 75,
 		},
 		defaultVariation: 'googleMyBusinessBanner',
-	},
-	privateByDefault: {
-		datestamp: '20181217',
-		variations: {
-			private: 0,
-			public: 100,
-		},
-		defaultVariation: 'public',
 	},
 	builderReferralThemesBanner: {
 		datestamp: '20181218',
@@ -131,20 +105,81 @@ export default {
 		},
 		defaultVariation: 'keep',
 	},
-	gSuitePlan: {
-		datestamp: '20190117',
+	twoYearPlanByDefault: {
+		datestamp: '20190207',
 		variations: {
-			basic: 90,
-			business: 10,
+			originalFlavor: 100,
+			twoYearFlavor: 0,
 		},
-		defaultVariation: 'basic',
+		defaultVariation: 'originalFlavor',
 	},
-	domainSearchButtonStyles: {
-		datestamp: '20190119',
+	gSuitePostCheckoutNotice: {
+		datestamp: '20190211',
 		variations: {
-			allPrimary: 50,
-			onePrimary: 50,
+			original: 50,
+			enhanced: 50,
 		},
-		defaultVariation: 'allPrimary',
+		defaultVariation: 'original',
+	},
+	jetpackMonthlyPlansOnly: {
+		datestamp: '20190312',
+		variations: {
+			original: 50,
+			monthlyOnly: 50,
+		},
+		defaultVariation: 'original',
+		allowExistingUsers: true,
+		localeTargets: 'any',
+		countryCodeTargets: [ 'ES', 'IT', 'PT', 'FR', 'NL', 'DE', 'BE', 'PL', 'SE' ],
+	},
+	pluginFeaturedTitle: {
+		datestamp: '20190220',
+		variations: {
+			featured: 50,
+			recommended: 50,
+		},
+		defaultVariation: 'featured',
+	},
+	builderReferralHelpPopover: {
+		datestamp: '20190227',
+		variations: {
+			builderReferralLink: 10,
+			original: 90,
+		},
+		defaultVariation: 'original',
+	},
+	gSuiteContinueButtonCopy: {
+		datestamp: '20190307',
+		variations: {
+			purchase: 50,
+			original: 50,
+		},
+		defaultVariation: 'original',
+	},
+	checklistSiteLogo: {
+		datestamp: '20190305',
+		variations: {
+			icon: 50,
+			logo: 50,
+		},
+		defaultVariation: 'icon',
+	},
+	gSuiteStatsNudge: {
+		datestamp: '20190308',
+		variations: {
+			copy1: 25,
+			copy2: 25,
+			copy3: 25,
+			copy4: 25,
+		},
+		defaultVariation: 'copy1',
+	},
+	builderReferralHelpBanner: {
+		datestamp: '20190304',
+		variations: {
+			builderReferralBanner: 25,
+			original: 75,
+		},
+		defaultVariation: 'original',
 	},
 };

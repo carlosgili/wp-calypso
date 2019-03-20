@@ -13,7 +13,7 @@
 }
 
 .is-reader-page .search-stream__fixed-area {
-	background-color: $white;
+	background-color: var( --color-white );
 	position: fixed;
 	top: 0;
 	margin-top: 47px; // masterbar is exactly 47px
@@ -49,28 +49,6 @@
 .main.search-stream {
 	@include breakpoint( '<660px' ) {
 		perspective: none; // Fix search bar pushed up behind the masterbar in Safari
-	}
-}
-
-// Search term suggestions
-.search-stream__blank-suggestions {
-	border-bottom: 1px solid var( --color-neutral-100 );
-	font-size: 13px;
-	color: $gray;
-	padding: 16px 0;
-	text-align: left;
-
-	a,
-	a:visited {
-		color: var( --color-primary );
-	}
-
-	a:hover {
-		color: var( --color-primary-light );
-	}
-
-	@include breakpoint( '<660px' ) {
-		padding: 16px;
 	}
 }
 
@@ -205,10 +183,9 @@
 
 // Post and Sites static headers
 .search-stream__headers {
-	color: $gray;
+	color: var( --color-neutral-light );
 	display: flex;
 	font-size: 14px;
-	display: flex;
 	font-weight: 600;
 	list-style-type: none;
 	margin: 17px 0 0;

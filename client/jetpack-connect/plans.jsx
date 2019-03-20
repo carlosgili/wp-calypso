@@ -6,7 +6,7 @@ import React, { Component, Fragment } from 'react';
 import PropTypes from 'prop-types';
 import page from 'page';
 import { connect } from 'react-redux';
-import { get } from 'lodash';
+import { get, flowRight } from 'lodash';
 import { localize } from 'i18n-calypso';
 
 /**
@@ -33,10 +33,12 @@ import { isCurrentPlanPaid, isJetpackSite } from 'state/sites/selectors';
 import { JPC_PATH_PLANS } from './constants';
 import { mc } from 'lib/analytics';
 import { PLAN_JETPACK_FREE } from 'lib/plans/constants';
-import { loadTrackingTool, recordTracksEvent } from 'state/analytics/actions';
+import { recordTracksEvent } from 'state/analytics/actions';
 import canCurrentUser from 'state/selectors/can-current-user';
 import hasInitializedSites from 'state/selectors/has-initialized-sites';
 import isSiteAutomatedTransfer from 'state/selectors/is-site-automated-transfer';
+import withTrackingTool from 'lib/analytics/with-tracking-tool';
+import { requestGeoLocation } from 'state/data-getters';
 
 const CALYPSO_PLANS_PAGE = '/plans/';
 const CALYPSO_MY_PLAN_PAGE = '/plans/my-plan/';
@@ -55,7 +57,6 @@ class Plans extends Component {
 	redirecting = false;
 
 	componentDidMount() {
-		this.props.loadTrackingTool( 'HotJar' );
 		this.maybeRedirect();
 		if ( ! this.redirecting ) {
 			this.props.recordTracksEvent( 'calypso_jpc_plans_view', {
@@ -178,7 +179,8 @@ class Plans extends Component {
 			false !== this.props.notJetpack ||
 			! this.props.canPurchasePlans ||
 			false !== this.props.hasPlan ||
-			false !== this.props.isAutomatedTransfer
+			false !== this.props.isAutomatedTransfer ||
+			! this.props.countryCode
 		);
 	}
 
@@ -189,7 +191,7 @@ class Plans extends Component {
 	};
 
 	render() {
-		const { interval, selectedSite, translate } = this.props;
+		const { interval, selectedSite, translate, countryCode } = this.props;
 
 		if ( this.shouldShowPlaceholder() ) {
 			return (
@@ -214,6 +216,7 @@ class Plans extends Component {
 					isLanding={ false }
 					interval={ interval }
 					selectedSite={ selectedSite }
+					countryCode={ countryCode }
 				>
 					<PlansExtendedInfo recordTracks={ this.handleInfoButtonClick } />
 					<LoggedOutFormLinks>
@@ -232,15 +235,19 @@ class Plans extends Component {
 
 export { Plans as PlansTestComponent };
 
-export default connect(
-	state => {
+const connectComponent = connect(
+	( state, props ) => {
 		const user = getCurrentUser( state );
 		const selectedSite = getSelectedSite( state );
 		const selectedSiteSlug = selectedSite ? selectedSite.slug : '';
-
+		const geo = requestGeoLocation();
+		let countryCode = geo.data;
+		if ( ! countryCode && geo.state === 'failure' ) {
+			// if our geo requests are being blocked, we default to US
+			countryCode = 'US';
+		}
 		const selectedPlanSlug = retrievePlan();
 		const selectedPlan = getPlanBySlug( state, selectedPlanSlug );
-
 		return {
 			calypsoStartedConnection: isCalypsoStartedConnection( selectedSiteSlug ),
 			canPurchasePlans: selectedSite
@@ -255,11 +262,17 @@ export default connect(
 			selectedSite,
 			selectedSiteSlug,
 			userId: user ? user.ID : null,
+			countryCode: props.countryCode || countryCode,
 		};
 	},
 	{
 		completeFlow,
-		loadTrackingTool,
 		recordTracksEvent,
 	}
-)( localize( Plans ) );
+);
+
+export default flowRight(
+	connectComponent,
+	localize,
+	withTrackingTool( 'HotJar' )
+)( Plans );

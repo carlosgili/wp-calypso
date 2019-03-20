@@ -1,5 +1,5 @@
 .purchase-detail {
-	box-shadow: 0 0 0 1px transparentize( $gray-lighten-20, 0.5 ),
+	box-shadow: 0 0 0 1px rgba( var( --color-neutral-100-rgb ), 0.5 ),
 		0 1px 2px var( --color-neutral-0 );
 	box-sizing: border-box;
 	color: var( --color-text-subtle );
@@ -83,7 +83,7 @@
 .purchase-detail__icon {
 	background: var( --color-neutral-500 );
 	border-radius: 50%;
-	color: $white;
+	color: var( --color-white );
 	margin-bottom: 10px;
 	padding: 16px;
 	width: 100%;
@@ -110,14 +110,13 @@
 
 .purchase-detail__icon,
 .purchase-detail__icon .gridicon {
-	width: 36px;
-	height: auto;
-	margin-top: 0;
+	width: 48px;
+	height: 48px;
+	margin: 0 auto;
+}
 
-	@include breakpoint( '>660px' ) {
-		width: 48px;
-		height: 48px;
-	}
+.purchase-detail__icon {
+	margin-bottom: 20px;
 }
 
 .purchase-detail.custom-icon {
@@ -179,7 +178,15 @@
 
 .purchase-detail__required-notice {
 	background-color: var( --color-warning );
-	color: $white;
+	color: var( --color-white );
+	font-size: 14px;
+	padding: 8px;
+	text-align: center;
+}
+
+.purchase-detail__required-error {
+	background-color: var( --color-error );
+	color: var( --color-white );
 	font-size: 14px;
 	padding: 8px;
 	text-align: center;

@@ -13,6 +13,7 @@ import Gridicon from 'gridicons';
 /**
  * Internal Dependencies
  */
+import { abtest } from 'lib/abtest';
 import {
 	VIEW_CONTACT,
 	VIEW_RICH_RESULT,
@@ -23,6 +24,7 @@ import {
 	selectResult,
 	resetInlineHelpContactForm,
 	hideOnboardingWelcomePrompt,
+	hideChecklistPrompt,
 } from 'state/inline-help/actions';
 import Button from 'components/button';
 import Popover from 'components/popover';
@@ -57,7 +59,6 @@ import getGutenbergEditorUrl from 'state/selectors/get-gutenberg-editor-url';
 import { getEditorPostId } from 'state/ui/editor/selectors';
 import { getEditedPostValue } from 'state/posts/selectors';
 import isGutenbergEnabled from '../../state/selectors/is-gutenberg-enabled';
-import { __ } from 'gutenberg/extensions/presets/jetpack/utils/i18n';
 
 class InlineHelpPopover extends Component {
 	static propTypes = {
@@ -133,6 +134,7 @@ class InlineHelpPopover extends Component {
 		if ( this.props.isOnboardingWelcomeVisible ) {
 			return this.openOnboardingWelcomeView();
 		}
+		this.props.hideChecklistPrompt();
 		this.setState( { showSecondaryView: false } );
 	};
 
@@ -189,6 +191,26 @@ class InlineHelpPopover extends Component {
 		);
 	};
 
+	renderUpworkNudge = () => {
+		const { upworkNudgeViewed, upworkNudgeClicked } = this.props;
+		if ( abtest( 'builderReferralHelpPopover' ) === 'original' ) {
+			return null;
+		}
+		upworkNudgeViewed();
+		return (
+			<div className="inline-help__upwork">
+				<a
+					onClick={ upworkNudgeClicked }
+					href={ '/experts/upwork?source=help-menu' }
+					title="Link to Upwork where you can hire a WordPress expert"
+				>
+					Need a designer to build your site?
+				</a>
+				<p>Hire a WordPress design expert from Upwork.</p>
+			</div>
+		);
+	};
+
 	renderPopoverContent = () => {
 		return (
 			<Fragment>
@@ -198,6 +220,7 @@ class InlineHelpPopover extends Component {
 						openResult={ this.openResultView }
 						query={ this.props.searchQuery }
 					/>
+					{ this.renderUpworkNudge() }
 					<InlineHelpSearchResults
 						openResult={ this.openResultView }
 						searchQuery={ this.props.searchQuery }
@@ -278,10 +301,10 @@ class InlineHelpPopover extends Component {
 	};
 
 	switchToClassicEditor = () => {
-		const { siteId, onClose, optOut, classicUrl } = this.props;
+		const { siteId, onClose, optOut, classicUrl, translate } = this.props;
 		const proceed =
 			typeof window === 'undefined' ||
-			window.confirm( __( 'Are you sure you wish to leave this page?' ) );
+			window.confirm( translate( 'Are you sure you wish to leave this page?' ) );
 		if ( proceed ) {
 			optOut( siteId, classicUrl );
 			onClose();
@@ -351,6 +374,30 @@ const optIn = ( siteId, gutenbergUrl ) => {
 	);
 };
 
+const upworkNudgeViewed = () => {
+	return composeAnalytics(
+		recordGoogleEvent(
+			'Upwork Link Viewed',
+			'Viewed "Need a designer to build your site?" in the help popover.',
+			'View',
+			false
+		),
+		recordTracksEvent( 'calypso_upwork_help_popover_view' )
+	);
+};
+
+const upworkNudgeClicked = () => {
+	return composeAnalytics(
+		recordGoogleEvent(
+			'Upwork Clicked',
+			'Clicked "Need a designer to build your site?" in the help popover.',
+			'Click',
+			false
+		),
+		recordTracksEvent( 'calypso_upwork_help_popover_clicked' )
+	);
+};
+
 function mapStateToProps( state ) {
 	const siteId = getSelectedSiteId( state );
 	const currentRoute = getCurrentRoute( state );
@@ -383,11 +430,14 @@ function mapStateToProps( state ) {
 
 const mapDispatchToProps = {
 	hideOnboardingWelcomePrompt,
+	hideChecklistPrompt,
 	optOut,
 	optIn,
 	recordTracksEvent,
 	selectResult,
 	resetContactForm: resetInlineHelpContactForm,
+	upworkNudgeViewed,
+	upworkNudgeClicked,
 };
 
 export default connect(

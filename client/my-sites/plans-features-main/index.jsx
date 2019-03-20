@@ -41,10 +41,11 @@ import HappychatConnection from 'components/happychat/connection-connected';
 import isHappychatAvailable from 'state/happychat/selectors/is-happychat-available';
 import { getSitePlan, getSiteSlug } from 'state/sites/selectors';
 import { isDiscountActive } from 'state/selectors/get-active-discount.js';
-import { getDiscountByName } from 'lib/discounts';
-import { selectSiteId as selectHappychatSiteId } from 'state/help/actions';
 import { getDecoratedSiteDomains } from 'state/sites/domains/selectors';
+import { getDiscountByName } from 'lib/discounts';
 import { getTld } from 'lib/domains';
+import { selectSiteId as selectHappychatSiteId } from 'state/help/actions';
+import { abtest } from 'lib/abtest';
 
 export class PlansFeaturesMain extends Component {
 	componentDidUpdate( prevProps ) {
@@ -71,6 +72,7 @@ export class PlansFeaturesMain extends Component {
 			domainName,
 			isInSignup,
 			isLandingPage,
+			isLaunchPage,
 			onUpgradeClick,
 			selectedFeature,
 			selectedPlan,
@@ -99,6 +101,7 @@ export class PlansFeaturesMain extends Component {
 					nonDotBlogDomains={ this.filterDotBlogDomains() }
 					isInSignup={ isInSignup }
 					isLandingPage={ isLandingPage }
+					isLaunchPage={ isLaunchPage }
 					onUpgradeClick={ onUpgradeClick }
 					plans={ plans }
 					visiblePlans={ visiblePlans }
@@ -116,7 +119,13 @@ export class PlansFeaturesMain extends Component {
 	}
 
 	getPlansForPlanFeatures() {
-		const { displayJetpackPlans, intervalType, selectedPlan, hideFreePlan } = this.props;
+		const {
+			displayJetpackPlans,
+			intervalType,
+			selectedPlan,
+			hideFreePlan,
+			countryCode,
+		} = this.props;
 
 		const currentPlan = getPlan( selectedPlan );
 
@@ -134,6 +143,14 @@ export class PlansFeaturesMain extends Component {
 		}
 
 		const group = displayJetpackPlans ? GROUP_JETPACK : GROUP_WPCOM;
+
+		if (
+			countryCode &&
+			displayJetpackPlans &&
+			abtest( 'jetpackMonthlyPlansOnly', countryCode ) === 'monthlyOnly'
+		) {
+			term = TERM_MONTHLY;
+		}
 
 		// In WPCOM, only the business plan is available in monthly term
 		// For any other plan, switch to annually.
@@ -264,8 +281,11 @@ export class PlansFeaturesMain extends Component {
 	}
 
 	renderToggle() {
-		const { displayJetpackPlans, withWPPlanTabs } = this.props;
+		const { displayJetpackPlans, withWPPlanTabs, countryCode } = this.props;
 		if ( displayJetpackPlans ) {
+			if ( countryCode && abtest( 'jetpackMonthlyPlansOnly', countryCode ) === 'monthlyOnly' ) {
+				return false;
+			}
 			return this.getIntervalTypeToggle();
 		}
 		if ( withWPPlanTabs ) {
@@ -383,5 +403,7 @@ export default connect(
 			siteSlug: getSiteSlug( state, get( props.site, [ 'ID' ] ) ),
 		};
 	},
-	{ selectHappychatSiteId }
+	{
+		selectHappychatSiteId,
+	}
 )( localize( PlansFeaturesMain ) );

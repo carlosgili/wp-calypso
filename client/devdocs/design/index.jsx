@@ -81,6 +81,7 @@ import LanguagePicker from 'components/language-picker/docs/example';
 import LineChart from 'components/line-chart/docs/example';
 import ListEnd from 'components/list-end/docs/example';
 import MarkedLinesExample from 'components/marked-lines/docs/example';
+import MultipleChoiceQuestionExample from 'components/multiple-choice-question/docs/example';
 import Notices from 'components/notice/docs/example';
 import PaginationExample from 'components/pagination/docs/example';
 import PaymentLogo from 'components/payment-logo/docs/example';
@@ -121,6 +122,7 @@ import VerticalMenu from 'components/vertical-menu/docs/example';
 import VerticalNav from 'components/vertical-nav/docs/example';
 import Wizard from 'components/wizard/docs/example';
 import WizardProgressBar from 'components/wizard-progress-bar/docs/example';
+import WpcomColophon from 'components/wpcom-colophon/docs/example';
 
 class DesignAssets extends React.Component {
 	static displayName = 'DesignAssets';
@@ -238,6 +240,7 @@ class DesignAssets extends React.Component {
 					<LineChart readmeFilePath="line-chart" />
 					<ListEnd readmeFilePath="list-end" />
 					<MarkedLinesExample readmeFilePath="marked-lines" />
+					<MultipleChoiceQuestionExample readmeFilePath="multiple-choice-question" />
 					<Notices readmeFilePath="notice" />
 					<PaginationExample readmeFilePath="pagination" />
 					<PaymentLogo readmeFilePath="payment-logo" />
@@ -277,6 +280,7 @@ class DesignAssets extends React.Component {
 					<Version readmeFilePath="version" />
 					<Wizard readmeFilePath="wizard" />
 					<WizardProgressBar readmeFilePath="wizard-progress-bar" />
+					<WpcomColophon readmeFilePath="wpcom-colophon" />
 				</Collection>
 			</Main>
 		);

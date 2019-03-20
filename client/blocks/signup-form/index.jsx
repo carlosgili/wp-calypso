@@ -29,6 +29,7 @@ import PropTypes from 'prop-types';
  * Internal dependencies
  */
 import { localizeUrl } from 'lib/i18n-utils';
+import { isCrowdsignalOAuth2Client } from 'lib/oauth2-clients';
 import wpcom from 'lib/wp';
 import config from 'config';
 import analytics from 'lib/analytics';
@@ -49,6 +50,7 @@ import LoggedOutFormLinkItem from 'components/logged-out-form/link-item';
 import LoggedOutFormBackLink from 'components/logged-out-form/back-link';
 import LoggedOutFormFooter from 'components/logged-out-form/footer';
 import { mergeFormWithValue } from 'signup/utils';
+import CrowdsignalSignupForm from './crowdsignal';
 import SocialSignupForm from './social';
 import { recordTracksEventWithClientId as recordTracksEvent } from 'state/analytics/actions';
 import { createSocialUserFailed } from 'state/login/actions';
@@ -112,6 +114,8 @@ class SignupForm extends Component {
 	state = {
 		notice: null,
 		submitting: false,
+		focusPassword: false,
+		focusUsername: false,
 		form: null,
 		signedUp: false,
 		validationInitialized: false,
@@ -225,8 +229,8 @@ class SignupForm extends Component {
 	validate = ( fields, onComplete ) => {
 		const fieldsForValidation = filter( [
 			'email',
-			'password',
-			this.props.displayUsernameInput && 'username',
+			this.state.focusPassword && 'password',
+			this.props.displayUsernameInput && this.state.focusUsername && 'username',
 			this.props.displayNameInput && 'firstName',
 			this.props.displayNameInput && 'lastName',
 		] );
@@ -315,8 +319,16 @@ class SignupForm extends Component {
 		} );
 	};
 
-	handleBlur = () => {
+	handleBlur = event => {
 		const data = this.getUserData();
+		const fieldId = event.target.id;
+		// Ensure that username and password field validation does not trigger prematurely
+		if ( fieldId === 'password' ) {
+			this.setState( { focusPassword: true } );
+		}
+		if ( fieldId === 'username' ) {
+			this.setState( { focusUsername: true } );
+		}
 		// When a user moves away from the signup form without having entered
 		// anything do not show error messages, think going to click log in.
 		if ( data.username.length === 0 && data.password.length === 0 && data.email.length === 0 ) {
@@ -709,6 +721,32 @@ class SignupForm extends Component {
 	render() {
 		if ( this.getUserExistsError( this.props ) ) {
 			return null;
+		}
+
+		if ( isCrowdsignalOAuth2Client( this.props.oauth2Client ) ) {
+			const socialProps = pick( this.props, [
+				'isSocialSignupEnabled',
+				'handleSocialResponse',
+				'socialService',
+				'socialServiceResponse',
+			] );
+
+			const logInUrl = config.isEnabled( 'login/native-login-links' )
+				? this.getLoginLink()
+				: localizeUrl( config( 'login_url' ), this.props.locale );
+
+			return (
+				<CrowdsignalSignupForm
+					disabled={ this.props.disabled }
+					formFields={ this.formFields() }
+					handleSubmit={ this.handleSubmit }
+					loginLink={ logInUrl }
+					oauth2Client={ this.props.oauth2Client }
+					recordBackLinkClick={ this.recordBackLinkClick }
+					submitting={ this.props.submitting }
+					{ ...socialProps }
+				/>
+			);
 		}
 
 		return (

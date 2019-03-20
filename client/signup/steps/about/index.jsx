@@ -32,8 +32,12 @@ import PressableStoreStep from '../design-type-with-store/pressable-store';
 import { abtest } from 'lib/abtest';
 import { isUserLoggedIn } from 'state/current-user/selectors';
 import { getSiteTypePropertyValue } from 'lib/signup/site-type';
-import { getSiteVerticalId } from 'state/signup/steps/site-vertical/selectors';
+import {
+	getSiteVerticalId,
+	getSiteVerticalParentId,
+} from 'state/signup/steps/site-vertical/selectors';
 import { setSiteVertical } from 'state/signup/steps/site-vertical/actions';
+import hasInitializedSites from 'state/selectors/has-initialized-sites';
 
 //Form components
 import Card from 'components/card';
@@ -61,8 +65,10 @@ class AboutStep extends Component {
 		const hasPrepopulatedVertical =
 			isValidLandingPageVertical( props.siteTopic ) &&
 			props.queryObject.vertical === props.siteTopic;
+
 		this.state = {
 			verticalId: props.verticalId,
+			verticalParentId: props.verticalParentId,
 			siteTopicValue: props.siteTopic,
 			userExperience: props.userExperience,
 			showStore: false,
@@ -105,17 +111,22 @@ class AboutStep extends Component {
 
 	setPressableStore = ref => ( this.pressableStore = ref );
 
-	onSiteTopicChange = ( { vertical_id, vertical_name, vertical_slug } ) => {
+	onSiteTopicChange = ( { parent, verticalId, verticalName, verticalSlug } ) => {
+		const verticalParentId = parent || verticalId;
 		this.setState( {
-			verticalId: vertical_id,
-			siteTopicValue: vertical_name,
-			siteTopicSlug: vertical_slug,
+			verticalId: verticalId,
+			siteTopicValue: verticalName,
+			siteTopicSlug: verticalSlug,
+			verticalParentId,
 		} );
 
-		this.props.recordTracksEvent( 'calypso_signup_actions_select_site_topic', { vertical_name } );
+		this.props.recordTracksEvent( 'calypso_signup_actions_select_site_topic', {
+			vertical_name: verticalName,
+			parent_id: verticalParentId,
+		} );
 		this.formStateController.handleFieldChange( {
 			name: 'siteTopic',
-			value: vertical_name,
+			value: verticalName,
 		} );
 	};
 
@@ -225,6 +236,7 @@ class AboutStep extends Component {
 			name: this.state.siteTopicValue,
 			slug: this.state.siteTopicSlug,
 			isUserInput: ! this.state.verticalId,
+			parentId: this.state.verticalParentId,
 		} );
 
 		//Site Goals
@@ -559,7 +571,14 @@ class AboutStep extends Component {
 	}
 
 	render() {
-		const { flowName, positionInFlow, signupProgress, stepName, translate } = this.props;
+		const {
+			flowName,
+			positionInFlow,
+			signupProgress,
+			stepName,
+			translate,
+			hasInitializedSitesBackUrl,
+		} = this.props;
 		const headerText = translate( 'Let’s create a site.' );
 		const subHeaderText = translate(
 			'Please answer these questions so we can help you make the site you need.'
@@ -576,6 +595,9 @@ class AboutStep extends Component {
 				fallbackSubHeaderText={ subHeaderText }
 				signupProgress={ signupProgress }
 				stepContent={ this.renderContent() }
+				allowBackFirstStep={ !! hasInitializedSitesBackUrl }
+				backUrl={ hasInitializedSitesBackUrl }
+				backLabelText={ hasInitializedSitesBackUrl ? translate( 'Back to My Sites' ) : null }
 			/>
 		);
 	}
@@ -590,6 +612,7 @@ export default connect(
 		siteType: getSiteType( state ),
 		isLoggedIn: isUserLoggedIn( state ),
 		verticalId: getSiteVerticalId( state ),
+		verticalParentId: getSiteVerticalParentId( state ),
 		shouldHideSiteGoals:
 			'onboarding' === ownProps.flowName && includes( ownProps.steps, 'site-type' ),
 		shouldHideSiteTitle:
@@ -598,6 +621,7 @@ export default connect(
 			includes( ownProps.steps, 'site-type' ) &&
 			includes( ownProps.steps, 'site-topic' ) &&
 			includes( ownProps.steps, 'site-information' ),
+		hasInitializedSitesBackUrl: hasInitializedSites( state ) ? '/sites/' : false,
 	} ),
 	{
 		setSiteTitle,

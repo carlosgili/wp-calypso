@@ -19,7 +19,7 @@ import { cartItems } from 'lib/cart-values';
 import CompactCard from 'components/card/compact';
 import GoogleAppsUsers from './users';
 import GoogleAppsProductDetails from './product-details';
-import { isGsuiteRestricted } from 'lib/domains';
+import { isGSuiteRestricted } from 'lib/domains/gsuite';
 import {
 	validate as validateGappsUsers,
 	filter as filterUsers,
@@ -67,7 +67,7 @@ class GoogleAppsDialog extends React.Component {
 	}
 
 	render() {
-		if ( isGsuiteRestricted() ) {
+		if ( isGSuiteRestricted() ) {
 			this.props.handleClickSkip();
 		} else {
 			return this.renderView();
@@ -75,18 +75,14 @@ class GoogleAppsDialog extends React.Component {
 	}
 
 	renderView() {
-		let plan = 'gapps';
-		if ( abtest( 'gSuitePlan' ) === 'business' ) {
-			plan = 'gapps_unlimited';
-		}
-		const prices = this.getPrices( plan );
+		const prices = this.getPrices( 'gapps' );
 
 		return (
 			<form className="gsuite-dialog__form" onSubmit={ this.handleFormSubmit }>
 				<QueryProducts />
 				<CompactCard>{ this.header() }</CompactCard>
 				<CompactCard>
-					<GoogleAppsProductDetails domain={ this.props.domain } plan={ plan } { ...prices } />
+					<GoogleAppsProductDetails domain={ this.props.domain } plan={ 'gapps' } { ...prices } />
 					{ this.renderGoogleAppsUsers() }
 				</CompactCard>
 				<CompactCard>{ this.footer() }</CompactCard>
@@ -133,8 +129,17 @@ class GoogleAppsDialog extends React.Component {
 		);
 	}
 
+	renderButtonCopy() {
+		const { translate } = this.props;
+		if ( abtest( 'gSuiteContinueButtonCopy' ) === 'purchase' ) {
+			return translate( 'Purchase G Suite' );
+		}
+		return translate( 'Yes, Add Email \u00BB' );
+	}
+
 	footer() {
 		const { translate } = this.props;
+
 		return (
 			<footer className="gsuite-dialog__footer">
 				<Button className="gsuite-dialog__checkout-button" onClick={ this.handleFormCheckout }>
@@ -146,7 +151,7 @@ class GoogleAppsDialog extends React.Component {
 					className="gsuite-dialog__continue-button"
 					onClick={ this.handleFormSubmit }
 				>
-					{ translate( 'Yes, Add Email \u00BB' ) }
+					{ this.renderButtonCopy() }
 				</Button>
 			</footer>
 		);
@@ -218,14 +223,9 @@ class GoogleAppsDialog extends React.Component {
 			};
 		} );
 
-		let plan = 'gapps';
-		if ( abtest( 'gSuitePlan' ) === 'business' ) {
-			plan = 'gapps_unlimited';
-		}
-
 		return cartItems.googleApps( {
 			domain: this.props.domain,
-			product_slug: plan,
+			product_slug: 'gapps',
 			users,
 		} );
 	}

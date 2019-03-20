@@ -8,17 +8,18 @@
  * External dependencies
  */
 const _ = require( 'lodash' );
-const { execSync } = require( 'child_process' );
-const fs = require( 'fs' );
 const path = require( 'path' );
 const webpack = require( 'webpack' );
 const AssetsWriter = require( './server/bundler/assets-writer' );
-const MiniCssExtractPluginWithRTL = require( 'mini-css-extract-plugin-with-rtl' );
-const WebpackRTLPlugin = require( 'webpack-rtl-plugin' );
 const { BundleAnalyzerPlugin } = require( 'webpack-bundle-analyzer' );
-const TerserPlugin = require( 'terser-webpack-plugin' );
 const CircularDependencyPlugin = require( 'circular-dependency-plugin' );
 const DuplicatePackageCheckerPlugin = require( 'duplicate-package-checker-webpack-plugin' );
+const FileConfig = require( '@automattic/calypso-build/webpack/file-loader' );
+const MomentTimezoneDataPlugin = require( 'moment-timezone-data-webpack-plugin' );
+const Minify = require( '@automattic/calypso-build/webpack/minify' );
+const SassConfig = require( '@automattic/calypso-build/webpack/sass' );
+const TranspileConfig = require( '@automattic/calypso-build/webpack/transpile' );
+const wordpressExternals = require( '@automattic/calypso-build/webpack/wordpress-externals' );
 
 /**
  * Internal dependencies
@@ -26,6 +27,7 @@ const DuplicatePackageCheckerPlugin = require( 'duplicate-package-checker-webpac
 const cacheIdentifier = require( './server/bundler/babel/babel-loader-cache-identifier' );
 const config = require( './server/config' );
 const { workerCount } = require( './webpack.common' );
+const getAliasesForExtensions = require( './config/webpack/extensions' );
 
 /**
  * Internal variables
@@ -35,25 +37,12 @@ const bundleEnv = config( 'env' );
 const isDevelopment = bundleEnv !== 'production';
 const shouldMinify =
 	process.env.MINIFY_JS === 'true' ||
-	( process.env.MINIFY_JS !== 'false' && bundleEnv === 'production' );
+	( process.env.MINIFY_JS !== 'false' && bundleEnv === 'production' && calypsoEnv !== 'desktop' );
 const shouldEmitStats = process.env.EMIT_STATS && process.env.EMIT_STATS !== 'false';
 const shouldEmitStatsWithReasons = process.env.EMIT_STATS === 'withreasons';
 const shouldCheckForCycles = process.env.CHECK_CYCLES === 'true';
 const codeSplit = config.isEnabled( 'code-splitting' );
 const isCalypsoClient = process.env.CALYPSO_CLIENT === 'true';
-
-/**
- * Plugin that generates the `public/custom-properties.css` file before compilation
- */
-class BuildCustomPropertiesCssPlugin {
-	apply( compiler ) {
-		compiler.hooks.compile.tap( 'BuildCustomPropertiesCssPlugin', () =>
-			execSync( 'node ' + path.join( __dirname, 'bin', 'build-custom-properties-css.js' ), {
-				cwd: __dirname,
-			} )
-		);
-	}
-}
 
 /*
  * Create reporter for ProgressPlugin (used with EMIT_STATS)
@@ -104,58 +93,6 @@ function createProgressHandler() {
 }
 
 /**
- * This function scans the /client/extensions directory in order to generate a map that looks like this:
- * {
- *   sensei: 'absolute/path/to/wp-calypso/client/extensions/sensei',
- *   woocommerce: 'absolute/path/to/wp-calypso/client/extensions/woocommerce',
- *   ....
- * }
- *
- * Providing webpack with these aliases instead of telling it to scan client/extensions for every
- * module resolution speeds up builds significantly.
- * @returns {Object} a mapping of extension name to path
- */
-function getAliasesForExtensions() {
-	const extensionsDirectory = path.join( __dirname, 'client', 'extensions' );
-	const extensionsNames = fs
-		.readdirSync( extensionsDirectory )
-		.filter( filename => filename.indexOf( '.' ) === -1 ); // heuristic for finding directories
-
-	const aliasesMap = {};
-	extensionsNames.forEach(
-		extensionName =>
-			( aliasesMap[ extensionName ] = path.join( extensionsDirectory, extensionName ) )
-	);
-	return aliasesMap;
-}
-
-/**
- * Converts @wordpress require into window reference
- *
- * Note this isn't the same as camel case because of the
- * way that numbers don't trigger the capitalized next letter
- *
- * @example
- * wordpressRequire( '@wordpress/api-fetch' ) = 'wp.apiFetch'
- * wordpressRequire( '@wordpress/i18n' ) = 'wp.i18n'
- *
- * @param {string} request import name
- * @return {string} global variable reference for import
- */
-const wordpressRequire = request => {
-	// @wordpress/components -> [ @wordpress, components ]
-	const [ , name ] = request.split( '/' );
-
-	// components -> wp.components
-	return `wp.${ name.replace( /-([a-z])/g, ( match, letter ) => letter.toUpperCase() ) }`;
-};
-
-const wordpressExternals = ( context, request, callback ) =>
-	/^@wordpress\//.test( request )
-		? callback( null, `root ${ wordpressRequire( request ) }` )
-		: callback();
-
-/**
  * Return a webpack config object
  *
  * @see {@link https://webpack.js.org/configuration/configuration-types/#exporting-a-function}
@@ -198,86 +135,47 @@ function getWebpackConfig( {
 			moduleIds: 'named',
 			chunkIds: isDevelopment ? 'named' : 'natural',
 			minimize: shouldMinify,
-			minimizer: [
-				new TerserPlugin( {
-					cache: process.env.CIRCLECI
-						? `${ process.env.HOME }/terser-cache`
-						: 'docker' !== process.env.CONTAINER,
-					parallel: workerCount,
-					sourceMap: Boolean( process.env.SOURCEMAP ),
-					terserOptions: {
-						ecma: 5,
-						safari10: true,
-					},
-				} ),
-			],
+			minimizer: Minify( {
+				cache: process.env.CIRCLECI
+					? `${ process.env.HOME }/terser-cache`
+					: 'docker' !== process.env.CONTAINER,
+				parallel: workerCount,
+				sourceMap: Boolean( process.env.SOURCEMAP ),
+				terserOptions: {
+					ecma: 5,
+					safari10: true,
+					mangle: calypsoEnv !== 'desktop',
+				},
+			} ),
 		},
 		module: {
 			// avoids this warning:
 			// https://github.com/localForage/localForage/issues/577
-			noParse: /[\/\\]node_modules[\/\\]localforage[\/\\]dist[\/\\]localforage\.js$/,
+			noParse: /[/\\]node_modules[/\\]localforage[/\\]dist[/\\]localforage\.js$/,
 			rules: [
-				{
-					test: /\.jsx?$/,
+				TranspileConfig.loader( {
+					workerCount,
+					configFile: path.join( __dirname, 'babel.config.js' ),
+					cacheDirectory: path.join( __dirname, 'build', '.babel-client-cache' ),
+					cacheIdentifier,
 					exclude: /node_modules\//,
-					use: [
-						{
-							loader: 'thread-loader',
-							options: {
-								workers: workerCount,
-							},
-						},
-						{
-							loader: 'babel-loader',
-							options: {
-								configFile: path.resolve( __dirname, 'babel.config.js' ),
-								babelrc: false,
-								cacheDirectory: path.join( __dirname, 'build', '.babel-client-cache' ),
-								cacheIdentifier,
-							},
-						},
-					],
-				},
+				} ),
 				{
-					test: /node_modules[\/\\](redux-form|react-redux)[\/\\]es/,
+					test: /node_modules[/\\](redux-form|react-redux)[/\\]es/,
 					loader: 'babel-loader',
 					options: {
 						babelrc: false,
 						plugins: [ path.join( __dirname, 'server', 'bundler', 'babel', 'babel-lodash-es' ) ],
 					},
 				},
-				{
-					test: /\.(sc|sa|c)ss$/,
-					use: [
-						MiniCssExtractPluginWithRTL.loader,
-						{
-							loader: 'css-loader',
-							options: {
-								importLoaders: 2,
-							},
-						},
-						{
-							loader: 'postcss-loader',
-							options: {
-								config: {
-									ctx: {
-										preserveCssCustomProperties,
-									},
-								},
-							},
-						},
-						{
-							loader: 'sass-loader',
-							options: {
-								includePaths: [ path.join( __dirname, 'client' ) ],
-								data: `@import '${ path.join(
-									__dirname,
-									'assets/stylesheets/shared/_utils.scss'
-								) }';`,
-							},
-						},
-					],
-				},
+				SassConfig.loader( {
+					preserveCssCustomProperties,
+					includePaths: [ path.join( __dirname, 'client' ) ],
+					prelude: `@import '${ path.join(
+						__dirname,
+						'assets/stylesheets/shared/_utils.scss'
+					) }';`,
+				} ),
 				{
 					include: path.join( __dirname, 'client/sections.js' ),
 					loader: path.join( __dirname, 'server', 'bundler', 'sections-loader' ),
@@ -286,24 +184,13 @@ function getWebpackConfig( {
 					test: /\.html$/,
 					loader: 'html-loader',
 				},
-				{
-					test: /\.(?:gif|jpg|jpeg|png|svg)$/i,
-					use: [
-						{
-							loader: 'file-loader',
-							options: {
-								name: '[name]-[hash].[ext]',
-								outputPath: 'images/',
-							},
-						},
-					],
-				},
+				FileConfig.loader(),
 				{
 					include: require.resolve( 'tinymce/tinymce' ),
 					use: 'exports-loader?window=tinymce',
 				},
 				{
-					test: /node_modules[\/\\]tinymce/,
+					test: /node_modules[/\\]tinymce/,
 					use: 'imports-loader?this=>window',
 				},
 			],
@@ -314,13 +201,15 @@ function getWebpackConfig( {
 			alias: Object.assign(
 				{
 					'gridicons/example': 'gridicons/dist/example',
-					'react-virtualized': 'react-virtualized/dist/commonjs',
+					'react-virtualized': 'react-virtualized/dist/es',
 					'social-logos/example': 'social-logos/build/example',
 					debug: path.resolve( __dirname, 'node_modules/debug' ),
 					store: 'store/dist/store.modern',
 					gridicons$: path.resolve( __dirname, 'client/components/async-gridicons' ),
 				},
-				getAliasesForExtensions()
+				getAliasesForExtensions( {
+					extensionsDirectory: path.join( __dirname, 'client', 'extensions' ),
+				} )
 			),
 		},
 		node: false,
@@ -332,15 +221,8 @@ function getWebpackConfig( {
 				global: 'window',
 			} ),
 			new webpack.NormalModuleReplacementPlugin( /^path$/, 'path-browserify' ),
-			new webpack.IgnorePlugin( /^props$/ ),
 			isCalypsoClient && new webpack.IgnorePlugin( /^\.\/locale$/, /moment$/ ),
-			new MiniCssExtractPluginWithRTL( {
-				filename: cssFilename,
-				rtlEnabled: true,
-			} ),
-			new WebpackRTLPlugin( {
-				minify: ! isDevelopment,
-			} ),
+			...SassConfig.plugins( { cssFilename, minify: ! isDevelopment } ),
 			new AssetsWriter( {
 				filename: 'assets.json',
 				path: path.join( __dirname, 'server', 'bundler' ),
@@ -367,7 +249,9 @@ function getWebpackConfig( {
 					},
 				} ),
 			shouldEmitStats && new webpack.ProgressPlugin( createProgressHandler() ),
-			new BuildCustomPropertiesCssPlugin(),
+			new MomentTimezoneDataPlugin( {
+				startYear: 2000,
+			} ),
 		] ),
 		externals: _.compact( [
 			externalizeWordPressPackages && wordpressExternals,
@@ -394,7 +278,7 @@ function getWebpackConfig( {
 
 	if ( ! config.isEnabled( 'desktop' ) ) {
 		webpackConfig.plugins.push(
-			new webpack.NormalModuleReplacementPlugin( /^lib[\/\\]desktop$/, 'lodash/noop' )
+			new webpack.NormalModuleReplacementPlugin( /^lib[/\\]desktop$/, 'lodash/noop' )
 		);
 	}
 

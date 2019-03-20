@@ -156,7 +156,7 @@
 	white-space: nowrap;
 	overflow: hidden;
 	&:focus {
-		outline: solid $gray 1px;
+		outline: solid var( --color-neutral-light ) 1px;
 	}
 }
 
@@ -192,7 +192,7 @@
 
 	&.is-selected {
 		background: var( --color-primary );
-		color: $white;
+		color: var( --color-white );
 	}
 }
 

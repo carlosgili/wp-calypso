@@ -519,24 +519,6 @@ Undocumented.prototype.getInboundTransferStatus = function( domain, fn ) {
 };
 
 /**
- * Restarts a failed inbound domain transfer
- *
- * @param {int|string} siteId The site ID
- * @param {string} domain The domain name
- * @param {Function} fn The callback function
- * @returns {Promise} A promise that resolves when the request completes
- * @api public
- */
-Undocumented.prototype.restartInboundTransfer = function( siteId, domain, fn ) {
-	return this.wpcom.req.get(
-		{
-			path: `/domains/${ encodeURIComponent( domain ) }/inbound-transfer-restart/${ siteId }`,
-		},
-		fn
-	);
-};
-
-/**
  * Starts an inbound domain transfer that is in the pending_start state.
  *
  * @param {int|string} siteId The site ID
@@ -1173,36 +1155,6 @@ Undocumented.prototype.ebanxConfiguration = function( query, fn ) {
 };
 
 /**
- * GET emergent paywall iframe client configuration
- *
- * @param {string} countryCode - user's country code
- * @param {object} cart - current cart object. See: client/lib/cart/store/index.js
- * @param {Function} fn The callback function
- * @api public
- *
- * @returns {Promise} promise
- */
-Undocumented.prototype.emergentPaywallConfiguration = function(
-	countryCode,
-	cart,
-	domainDetails,
-	fn
-) {
-	debug( '/me/emergent-paywall-configuration query' );
-
-	const data = mapKeysRecursively(
-		{
-			country: countryCode,
-			cart,
-			domainDetails,
-		},
-		snakeCase
-	);
-
-	return this.wpcom.req.post( '/me/emergent-paywall-configuration', data, fn );
-};
-
-/**
  * GET paypal_express_url
  *
  * @param {object} [data] The GET data
@@ -1487,6 +1439,18 @@ Undocumented.prototype.sitesNew = function( query, fn ) {
 	);
 };
 
+/**
+ * Launches a private site
+ *
+ * @param {string} - ID or slug of the site to be launched
+ * @param {Function} fn - Function to invoke when request is complete
+ */
+Undocumented.prototype.launchSite = function( siteIdOrSlug, fn ) {
+	const path = `/sites/${ siteIdOrSlug }/launch`;
+	debug( path );
+	return this.wpcom.req.post( path, fn );
+};
+
 Undocumented.prototype.themes = function( siteId, query, fn ) {
 	const path = siteId ? '/sites/' + siteId + '/themes' : '/themes';
 	debug( path );
@@ -1604,68 +1568,6 @@ Undocumented.prototype.uploadTheme = function( siteId, file, onProgress ) {
 	} );
 };
 
-Undocumented.prototype.emailForwards = function( domain, callback ) {
-	return this.wpcom.req.get( '/domains/' + domain + '/email', function( error, response ) {
-		if ( error ) {
-			callback( error );
-			return;
-		}
-
-		callback( null, response );
-	} );
-};
-
-Undocumented.prototype.addEmailForward = function( domain, mailbox, destination, callback ) {
-	return this.wpcom.req.post(
-		'/domains/' + domain + '/email/new',
-		{},
-		{
-			mailbox: mailbox,
-			destination: destination,
-		},
-		function( error, response ) {
-			if ( error ) {
-				callback( error );
-				return;
-			}
-
-			callback( null, response );
-		}
-	);
-};
-
-Undocumented.prototype.deleteEmailForward = function( domain, mailbox, callback ) {
-	return this.wpcom.req.post(
-		'/domains/' + domain + '/email/' + mailbox + '/delete',
-		{},
-		{},
-		function( error, response ) {
-			if ( error ) {
-				callback( error );
-				return;
-			}
-
-			callback( null, response );
-		}
-	);
-};
-
-Undocumented.prototype.resendVerificationEmailForward = function( domain, mailbox, callback ) {
-	return this.wpcom.req.post(
-		'/domains/' + domain + '/email/' + mailbox + '/resend-verification',
-		{},
-		{},
-		function( error, response ) {
-			if ( error ) {
-				callback( error );
-				return;
-			}
-
-			callback( null, response );
-		}
-	);
-};
-
 Undocumented.prototype.nameservers = function( domain, callback ) {
 	return this.wpcom.req.get( '/domains/' + domain + '/nameservers', function( error, response ) {
 		if ( error ) {
@@ -1780,12 +1682,12 @@ Undocumented.prototype.cancelTransferRequest = function( { domainName, declineTr
 	return this.wpcom.req.post( '/domains/' + domainName + '/transfer', data, fn );
 };
 
-Undocumented.prototype.enablePrivacyProtection = function( domainName, fn ) {
-	const data = {
-		domainStatus: JSON.stringify( { command: 'enable-privacy' } ),
-	};
+Undocumented.prototype.enablePrivacyProtection = function( domainName, callback ) {
+	return this.wpcom.req.post( '/domains/' + domainName + '/privacy/enable', callback );
+};
 
-	return this.wpcom.req.post( '/domains/' + domainName + '/transfer', data, fn );
+Undocumented.prototype.disablePrivacyProtection = function( domainName, callback ) {
+	return this.wpcom.req.post( '/domains/' + domainName + '/privacy/disable', callback );
 };
 
 Undocumented.prototype.acceptTransfer = function( domainName, fn ) {
@@ -1905,16 +1807,6 @@ Undocumented.prototype.sitePurchases = function( siteId, fn ) {
 	return this.wpcom.req.get( { path: '/sites/' + siteId + '/purchases' }, fn );
 };
 
-Undocumented.prototype.googleAppsFilterByDomain = function( domainName, fn ) {
-	debug( '/domains/:domainName/google-apps' );
-	return this.wpcom.req.get( { path: '/domains/' + domainName + '/google-apps' }, fn );
-};
-
-Undocumented.prototype.googleAppsFilterBySiteId = function( siteId, fn ) {
-	debug( '/sites/:siteId/google-apps' );
-	return this.wpcom.req.get( { path: '/sites/' + siteId + '/google-apps' }, fn );
-};
-
 Undocumented.prototype.isSiteImportable = function( site_url ) {
 	debug( `/wpcom/v2/site-importer-global/is-site-importable?${ site_url }` );
 
@@ -2004,18 +1896,6 @@ Undocumented.prototype.cancelAndRefundPurchase = function( purchaseId, data, fn 
 		{
 			path: `/upgrades/${ purchaseId }/cancel`,
 			body: data,
-		},
-		fn
-	);
-};
-
-Undocumented.prototype.cancelPrivacyProtection = function( purchaseId, fn ) {
-	debug( 'upgrades/{purchaseId}/cancel-privacy-protection' );
-
-	return this.wpcom.req.post(
-		{
-			path: `/upgrades/${ purchaseId }/cancel-privacy-protection`,
-			apiVersion: '1.1',
 		},
 		fn
 	);

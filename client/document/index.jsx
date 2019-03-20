@@ -6,7 +6,6 @@
 
 import React, { Fragment } from 'react';
 import classNames from 'classnames';
-import { get } from 'lodash';
 
 /**
  * Internal dependencies
@@ -51,7 +50,6 @@ class Document extends React.Component {
 			sectionName,
 			clientData,
 			isFluidWidth,
-			sectionCss,
 			env,
 			isDebug,
 			badge,
@@ -63,6 +61,7 @@ class Document extends React.Component {
 			devDocsURL,
 			feedbackURL,
 			inlineScriptNonce,
+			isSupportSession,
 		} = this.props;
 
 		const csskey = isRTL ? 'css.rtl' : 'css.ltr';
@@ -71,6 +70,7 @@ class Document extends React.Component {
 			`var COMMIT_SHA = ${ jsonStringifyForHtml( commitSha ) };\n` +
 			`var BUILD_TIMESTAMP = ${ jsonStringifyForHtml( buildTimestamp ) };\n` +
 			( user ? `var currentUser = ${ jsonStringifyForHtml( user ) };\n` : '' ) +
+			( isSupportSession ? 'var isSupportSession = true;\n' : '' ) +
 			( app ? `var app = ${ jsonStringifyForHtml( app ) };\n` : '' ) +
 			( initialReduxState
 				? `var initialReduxState = ${ jsonStringifyForHtml( initialReduxState ) };\n`
@@ -84,7 +84,10 @@ class Document extends React.Component {
 			<html
 				lang={ lang }
 				dir={ isRTL ? 'rtl' : 'ltr' }
-				className={ classNames( { 'is-fluid-width': isFluidWidth } ) }
+				className={ classNames( {
+					'is-fluid-width': isFluidWidth,
+					'is-iframe': sectionName === 'gutenberg-editor',
+				} ) }
 			>
 				<Head
 					title={ head.title }
@@ -110,14 +113,6 @@ class Document extends React.Component {
 					/>
 					{ entrypoint[ csskey ].map( cssChunkLink ) }
 					{ chunkFiles[ csskey ].map( cssChunkLink ) }
-					{ sectionCss && (
-						<link
-							rel="stylesheet"
-							id={ 'section-css-' + sectionCss.id }
-							href={ get( sectionCss, 'urls.' + ( isRTL ? 'rtl' : 'ltr' ) ) }
-							type="text/css"
-						/>
-					) }
 				</Head>
 				<body
 					className={ classNames( {

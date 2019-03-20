@@ -6,6 +6,7 @@ import React, { Component, Fragment } from 'react';
 import PropTypes from 'prop-types';
 import page from 'page';
 import { connect } from 'react-redux';
+import { flowRight } from 'lodash';
 import { localize } from 'i18n-calypso';
 
 /**
@@ -20,11 +21,13 @@ import Placeholder from './plans-placeholder';
 import PlansGrid from './plans-grid';
 import PlansExtendedInfo from './plans-extended-info';
 import QueryPlans from 'components/data/query-plans';
+import withTrackingTool from 'lib/analytics/with-tracking-tool';
 import { getJetpackSiteByUrl } from 'state/jetpack-connect/selectors';
 import { getSite, isRequestingSites } from 'state/sites/selectors';
 import { PLAN_JETPACK_FREE } from 'lib/plans/constants';
-import { loadTrackingTool, recordTracksEvent } from 'state/analytics/actions';
+import { recordTracksEvent } from 'state/analytics/actions';
 import { storePlan } from './persistence-utils';
+import { requestGeoLocation } from 'state/data-getters';
 
 const CALYPSO_JETPACK_CONNECT = '/jetpack/connect';
 
@@ -39,7 +42,6 @@ class PlansLanding extends Component {
 	};
 
 	componentDidMount() {
-		this.props.loadTrackingTool( 'HotJar' );
 		const { cta_id, cta_from } = this.props.context.query;
 		this.props.recordTracksEvent( 'calypso_jpc_plans_landing_view', {
 			jpc_from: 'jetpack',
@@ -88,11 +90,16 @@ class PlansLanding extends Component {
 	};
 
 	render() {
-		const { interval, requestingSites, site, translate, url } = this.props;
+		const { interval, requestingSites, site, translate, url, countryCode } = this.props;
 
 		// We're redirecting in componentDidMount if the site is already connected
 		// so don't bother rendering any markup if this is the case
 		if ( url && ( site || requestingSites ) ) {
+			return <Placeholder />;
+		}
+
+		// if there's no geolocation info, we wait
+		if ( ! countryCode ) {
 			return <Placeholder />;
 		}
 
@@ -107,6 +114,7 @@ class PlansLanding extends Component {
 					interval={ interval }
 					isLanding={ true }
 					onSelect={ this.storeSelectedPlan }
+					countryCode={ countryCode }
 				>
 					<PlansExtendedInfo recordTracks={ this.handleInfoButtonClick } />
 					<LoggedOutFormLinks>
@@ -120,18 +128,30 @@ class PlansLanding extends Component {
 	}
 }
 
-export default connect(
+const connectComponent = connect(
 	( state, { url } ) => {
 		const rawSite = url ? getJetpackSiteByUrl( state, url ) : null;
 		const site = rawSite ? getSite( state, rawSite.ID ) : null;
+		const geo = requestGeoLocation();
+		let countryCode = geo.data;
+		if ( ! countryCode && geo.state === 'failure' ) {
+			// if our geo requests are being blocked, we default to US
+			countryCode = 'US';
+		}
 
 		return {
 			requestingSites: isRequestingSites( state ),
 			site,
+			countryCode: countryCode,
 		};
 	},
 	{
-		loadTrackingTool,
 		recordTracksEvent,
 	}
-)( localize( PlansLanding ) );
+);
+
+export default flowRight(
+	connectComponent,
+	localize,
+	withTrackingTool( 'HotJar' )
+)( PlansLanding );

@@ -43,7 +43,7 @@
 	vertical-align: bottom;
 
 	&.gridicons-checkmark-circle {
-		color: $alert-green;
+		color: var( --color-success );
 	}
 
 	&.gridicons-cross-circle {
@@ -115,7 +115,7 @@
 }
 
 .wp-super-cache__stats-header-row {
-	color: $gray;
+	color: var( --color-neutral-light );
 }
 
 .wp-super-cache__stats-header-column {

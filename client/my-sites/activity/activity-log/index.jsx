@@ -41,7 +41,6 @@ import QueryJetpackPlugins from 'components/data/query-jetpack-plugins';
 import SidebarNavigation from 'my-sites/sidebar-navigation';
 import SuccessBanner from '../activity-log-banner/success-banner';
 import RewindUnavailabilityNotice from './rewind-unavailability-notice';
-import { adjustMoment, getStartMoment } from './utils';
 import { getSelectedSiteId } from 'state/ui/selectors';
 import { getCurrentPlan } from 'state/sites/plans/selectors';
 import { getSiteSlug, getSiteTitle, isJetpackSite } from 'state/sites/selectors';
@@ -68,8 +67,8 @@ import { requestActivityLogs } from 'state/data-getters';
 import { emptyFilter } from 'state/activity-log/reducer';
 import { isMobile } from 'lib/viewport';
 import analytics from 'lib/analytics';
-import withLocalizedMoment from 'components/with-localized-moment';
-
+import { applySiteOffset } from 'lib/site/timezone';
+import { withLocalizedMoment } from 'components/localized-moment';
 import { getPreference } from 'state/preferences/selectors';
 
 const PAGE_SIZE = 20;
@@ -132,11 +131,6 @@ class ActivityLog extends Component {
 		}
 	};
 
-	getStartMoment() {
-		const { gmtOffset, startDate, timezone } = this.props;
-		return getStartMoment( { gmtOffset, startDate, timezone } );
-	}
-
 	/**
 	 * Close Restore, Backup, or Transfer confirmation dialog.
 	 * @param {string} type Type of dialog to close.
@@ -157,12 +151,12 @@ class ActivityLog extends Component {
 	 * Adjust a moment by the site timezone or gmt offset. Use the resulting function wherever log
 	 * times need to be formatted for display to ensure all times are displayed as site times.
 	 *
-	 * @param   {object} moment Moment to adjust.
-	 * @returns {object}        Moment adjusted for site timezone or gmtOffset.
+	 * @param   {object} date Moment to adjust.
+	 * @returns {Moment}      Moment adjusted for site timezone or gmtOffset.
 	 */
-	applySiteOffset = moment => {
+	applySiteOffset = date => {
 		const { timezone, gmtOffset } = this.props;
-		return adjustMoment( { timezone, gmtOffset, moment } );
+		return applySiteOffset( date, { timezone, gmtOffset } );
 	};
 
 	changePage = pageNumber => {
@@ -185,7 +179,7 @@ class ActivityLog extends Component {
 
 		const cards = [];
 
-		if ( !! restoreProgress ) {
+		if ( restoreProgress ) {
 			cards.push(
 				'finished' === restoreProgress.status
 					? this.getEndBanner( siteId, restoreProgress )
@@ -193,7 +187,7 @@ class ActivityLog extends Component {
 			);
 		}
 
-		if ( !! backupProgress ) {
+		if ( backupProgress ) {
 			if ( 0 <= backupProgress.progress ) {
 				cards.push( this.getProgressBanner( siteId, backupProgress, 'backup' ) );
 			} else if (
@@ -288,6 +282,7 @@ class ActivityLog extends Component {
 						siteId={ siteId }
 						timestamp={ rewindId }
 						downloadId={ downloadId }
+						restoreId={ restoreId }
 						backupUrl={ url }
 						downloadCount={ downloadCount }
 						context={ context }
@@ -379,11 +374,11 @@ class ActivityLog extends Component {
 		const theseLogs = logs.slice( ( actualPage - 1 ) * PAGE_SIZE, actualPage * PAGE_SIZE );
 
 		const timePeriod = ( () => {
-			const today = this.applySiteOffset( moment.utc( Date.now() ) );
+			const today = this.applySiteOffset( moment() );
 			let last = null;
 
 			return ( { rewindId } ) => {
-				const ts = this.applySiteOffset( moment.utc( rewindId * 1000 ) );
+				const ts = this.applySiteOffset( moment( rewindId * 1000 ) );
 
 				if ( null === last || ! ts.isSame( last, 'day' ) ) {
 					last = ts;

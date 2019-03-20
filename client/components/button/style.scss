@@ -252,26 +252,26 @@ button {
 
 		&:hover,
 		&:focus {
-			color: darken( $alert-red, 20% );
+			color: var( --color-error-600 );
 		}
 
 		&[disabled] {
-			color: lighten( $alert-red, 30% );
+			color: var( --color-error-50 );
 		}
 	}
 
 	&.is-primary {
-		color: var( --color-primary );
+		color: var( --color-accent );
 
 		&:focus,
 		&:hover,
 		&:active,
 		&.is-active {
-			color: var( --color-primary-dark );
+			color: var( --color-accent-dark );
 		}
 
 		&:focus {
-			box-shadow: 0 0 0 2px var( --color-primary-light );
+			box-shadow: 0 0 0 2px var( --color-accent-light );
 		}
 
 		&[disabled] {

@@ -5,7 +5,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import { connect } from 'react-redux';
-import { isNumber, includes } from 'lodash';
+import { get, isNumber, includes } from 'lodash';
 import { localize } from 'i18n-calypso';
 import Gridicon from 'gridicons';
 import classNames from 'classnames';
@@ -21,12 +21,14 @@ import {
 	hasDomainInCart,
 } from 'lib/cart-values/cart-items';
 import { recordTracksEvent } from 'state/analytics/actions';
-import { abtest } from 'lib/abtest';
 import {
 	parseMatchReasons,
 	VALID_MATCH_REASONS,
 } from 'components/domains/domain-registration-suggestion/utility';
 import ProgressBar from 'components/progress-bar';
+import { getDomainPrice } from 'lib/domains';
+import { getCurrentUserCurrencyCode } from 'state/current-user/selectors';
+import { getProductsList } from 'state/products-list/selectors';
 
 const NOTICE_GREEN = '#4ab866';
 
@@ -53,6 +55,7 @@ class DomainRegistrationSuggestion extends React.Component {
 		query: PropTypes.string,
 		pendingCheckSuggestion: PropTypes.object,
 		unavailableDomains: PropTypes.array,
+		productCost: PropTypes.string,
 	};
 
 	componentDidMount() {
@@ -117,15 +120,20 @@ class DomainRegistrationSuggestion extends React.Component {
 			suggestion,
 			translate,
 			pendingCheckSuggestion,
-			isFeatured,
 		} = this.props;
 		const { domain_name: domain } = suggestion;
 		const isAdded = hasDomainInCart( cart, domain );
 
 		let buttonContent;
+		let buttonStyles = this.props.buttonStyles;
 
 		if ( isAdded ) {
-			buttonContent = <Gridicon icon="checkmark" />;
+			buttonContent = translate( '{{checkmark/}} In Cart', {
+				context: 'Domain is already added to shopping cart',
+				components: { checkmark: <Gridicon icon="checkmark" /> },
+			} );
+
+			buttonStyles = { ...buttonStyles, primary: false };
 		} else {
 			buttonContent =
 				! isSignupStep &&
@@ -134,11 +142,6 @@ class DomainRegistrationSuggestion extends React.Component {
 							context: 'Domain mapping suggestion button with plan upgrade',
 					  } )
 					: translate( 'Select', { context: 'Domain mapping suggestion button' } );
-		}
-
-		let buttonStyles = { primary: true };
-		if ( abtest( 'domainSearchButtonStyles' ) === 'onePrimary' ) {
-			buttonStyles = ! isFeatured ? {} : this.props.buttonStyles;
 		}
 
 		if ( this.isUnavailableDomain( suggestion.domain_name ) ) {
@@ -249,7 +252,8 @@ class DomainRegistrationSuggestion extends React.Component {
 		const {
 			domainsWithPlansOnly,
 			isFeatured,
-			suggestion: { domain_name: domain, product_slug: productSlug, cost },
+			suggestion: { domain_name: domain },
+			productCost,
 		} = this.props;
 
 		const isUnavailableDomain = this.isUnavailableDomain( domain );
@@ -263,7 +267,7 @@ class DomainRegistrationSuggestion extends React.Component {
 			<DomainSuggestion
 				extraClasses={ extraClasses }
 				priceRule={ this.getPriceRule() }
-				price={ productSlug && cost }
+				price={ productCost }
 				domain={ domain }
 				domainsWithPlansOnly={ domainsWithPlansOnly }
 				onButtonClick={ this.onButtonClick }
@@ -277,7 +281,19 @@ class DomainRegistrationSuggestion extends React.Component {
 	}
 }
 
+const mapStateToProps = ( state, props ) => {
+	const productSlug = get( props, 'suggestion.product_slug' );
+
+	return {
+		productCost: getDomainPrice(
+			productSlug,
+			getProductsList( state ),
+			getCurrentUserCurrencyCode( state )
+		),
+	};
+};
+
 export default connect(
-	null,
+	mapStateToProps,
 	{ recordTracksEvent }
 )( localize( DomainRegistrationSuggestion ) );

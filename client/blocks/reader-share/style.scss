@@ -1,7 +1,7 @@
 .reader-share__button {
 	align-items: center;
 	box-sizing: border-box;
-	color: $gray;
+	color: var( --color-neutral-light );
 	display: inline-flex;
 	padding: 4px;
 	position: relative;
@@ -60,7 +60,7 @@
 		top: 8px;
 		left: 18px;
 		padding: 0;
-		fill: $gray;
+		fill: var( --color-neutral-light );
 
 		@include breakpoint( '>480px' ) {
 			left: 11px;
@@ -83,7 +83,7 @@
 	&:focus {
 		.gridicon,
 		.social-logo {
-			fill: $white;
+			fill: var( --color-white );
 		}
 	}
 }
@@ -109,7 +109,7 @@
 .reader-share__site-selector .site__title,
 .reader-share__site-selector .site__domain {
 	&::after {
-		background: linear-gradient( to right, rgba( 255, 255, 255, 0 ), $gray-light 90% );
+		@include long-content-fade( $color: var( --color-white-rgb ) );
 		border-radius: 50%;
 	}
 }

@@ -55,7 +55,7 @@
 }
 
 .editor-ground-control__quick-save {
-	border-left: 1px solid lighten( $gray, 25% );
+	border-left: 1px solid var( --color-neutral-50 );
 	display: flex;
 
 	// Hide the ground-control save buttons on mobile
@@ -143,7 +143,7 @@
 .focus-sidebar .editor-ground-control__toggle-sidebar:hover,
 .focus-sidebar .editor-ground-control__toggle-sidebar:focus,
 .focus-sidebar .editor-ground-control__toggle-sidebar {
-	color: $white;
+	color: var( --color-white );
 	background: var( --color-neutral-700 );
 }
 
@@ -241,8 +241,8 @@
 	&:focus:not( :active ) {
 		box-shadow: 0 0 0 2px var( --color-primary-light );
 		z-index: 1;
-		border-top-color: $gray;
-		border-bottom: 1px solid $gray;
+		border-top-color: var( --color-neutral-light );
+		border-bottom: 1px solid var( --color-neutral-light );
 	}
 
 	&:hover {
@@ -262,7 +262,7 @@
 }
 
 .editor-ground-control__back.button.is-borderless {
-	border-right: 1px solid lighten( $gray, 25% );
+	border-right: 1px solid var( --color-neutral-50 );
 	padding: 6px 16px;
 	min-width: 80px;
 	height: 46px;

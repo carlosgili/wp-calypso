@@ -39,6 +39,7 @@ import { getDomainProductSlug } from 'lib/domains';
 import QueryProductsList from 'components/data/query-products-list';
 import { getAvailableProductsList } from 'state/products-list/selectors';
 import { getSuggestionsVendor } from 'lib/domains/suggestions';
+import { getSite } from 'state/sites/selectors';
 
 /**
  * Style dependencies
@@ -60,6 +61,7 @@ class DomainsStep extends React.Component {
 		step: PropTypes.object,
 		stepName: PropTypes.string.isRequired,
 		stepSectionName: PropTypes.string,
+		selectedSite: PropTypes.object,
 	};
 
 	static contextTypes = {
@@ -180,6 +182,14 @@ class DomainsStep extends React.Component {
 		return `${ repo }/${ themeSlug }`;
 	};
 
+	handleSkip = () => {
+		const domainItem = undefined;
+		SignupActions.submitSignupStep( { stepName: this.props.stepName, domainItem }, [], {
+			domainItem,
+		} );
+		this.props.goToNextStep();
+	};
+
 	submitWithDomain = googleAppsCartItem => {
 		const suggestion = this.props.step.suggestion,
 			isPurchasingItem = Boolean( suggestion.product_slug ),
@@ -298,7 +308,7 @@ class DomainsStep extends React.Component {
 	};
 
 	shouldIncludeDotBlogSubdomain() {
-		const { flowName, siteGoals } = this.props;
+		const { flowName, siteGoals, signupDependencies } = this.props;
 		const siteGoalsArray = siteGoals ? siteGoals.split( ',' ) : [];
 
 		return (
@@ -306,10 +316,11 @@ class DomainsStep extends React.Component {
 			flowName === 'subdomain' ||
 			// 'blog' flow, starting with blog themes
 			flowName === 'blog' ||
-			// All flows where 'about' step is before 'domains' step, user picked only 'share' on the `about` step
 			( ! this.props.isDomainOnly &&
-				siteGoalsArray.length === 1 &&
-				siteGoalsArray.indexOf( 'share' ) !== -1 )
+				// All flows where 'about' step is before 'domains' step, user picked only 'share' on the `about` step
+				( ( siteGoalsArray.length === 1 && siteGoalsArray.indexOf( 'share' ) !== -1 ) ||
+					// or users chose `Blog` as their site type
+					'blog' === get( signupDependencies, 'siteType' ) ) )
 		);
 	}
 
@@ -344,6 +355,16 @@ class DomainsStep extends React.Component {
 			}
 		}
 
+		let showExampleSuggestions = this.props.showExampleSuggestions;
+		if ( 'undefined' === typeof showExampleSuggestions ) {
+			showExampleSuggestions = true;
+		}
+
+		let includeWordPressDotCom = this.props.includeWordPressDotCom;
+		if ( 'undefined' === typeof includeWordPressDotCom ) {
+			includeWordPressDotCom = ! this.props.isDomainOnly;
+		}
+
 		return (
 			<RegisterDomainStep
 				key="domainForm"
@@ -361,15 +382,18 @@ class DomainsStep extends React.Component {
 				isDomainOnly={ this.props.isDomainOnly }
 				analyticsSection={ this.getAnalyticsSection() }
 				domainsWithPlansOnly={ this.props.domainsWithPlansOnly }
-				includeWordPressDotCom={ ! this.props.isDomainOnly }
+				includeWordPressDotCom={ includeWordPressDotCom }
 				includeDotBlogSubdomain={ this.shouldIncludeDotBlogSubdomain() }
 				isSignupStep
-				showExampleSuggestions
+				showExampleSuggestions={ showExampleSuggestions }
 				surveyVertical={ this.props.surveyVertical }
 				suggestion={ initialQuery }
 				designType={ this.getDesignType() }
 				vendor={ getSuggestionsVendor() }
 				deemphasiseTlds={ this.props.flowName === 'ecommerce' ? [ 'blog' ] : [] }
+				selectedSite={ this.props.selectedSite }
+				showSkipButton={ this.props.showSkipButton }
+				onSkip={ this.handleSkip }
 			/>
 		);
 	};
@@ -495,8 +519,8 @@ class DomainsStep extends React.Component {
 			return null;
 		}
 
-		const { translate } = this.props;
-		let backUrl = undefined;
+		const { translate, selectedSite } = this.props;
+		let backUrl, backLabelText;
 
 		if ( 'transfer' === this.props.stepSectionName || 'mapping' === this.props.stepSectionName ) {
 			backUrl = getStepUrl(
@@ -507,6 +531,9 @@ class DomainsStep extends React.Component {
 			);
 		} else if ( this.props.stepSectionName ) {
 			backUrl = getStepUrl( this.props.flowName, this.props.stepName, undefined, getLocaleSlug() );
+		} else if ( 0 === this.props.positionInFlow && selectedSite ) {
+			backUrl = `/view/${ selectedSite.slug }`;
+			backLabelText = translate( 'Back to Site' );
 		}
 
 		const fallbackSubHeaderText = this.getSubHeaderText();
@@ -518,6 +545,8 @@ class DomainsStep extends React.Component {
 				backUrl={ backUrl }
 				positionInFlow={ this.props.positionInFlow }
 				signupProgress={ this.props.signupProgress }
+				headerText={ this.props.headerText }
+				subHeaderText={ this.props.subHeaderText }
 				fallbackHeaderText={ translate( 'Give your site an address.' ) }
 				fallbackSubHeaderText={ fallbackSubHeaderText }
 				stepContent={
@@ -527,6 +556,8 @@ class DomainsStep extends React.Component {
 					</div>
 				}
 				showSiteMockups={ this.props.showSiteMockups }
+				allowBackFirstStep={ !! selectedSite }
+				backLabelText={ backLabelText }
 			/>
 		);
 	}
@@ -565,7 +596,7 @@ const submitDomainStepSelection = ( suggestion, section ) => {
 };
 
 export default connect(
-	state => {
+	( state, ownProps ) => {
 		const productsList = getAvailableProductsList( state );
 		const productsLoaded = ! isEmpty( productsList );
 
@@ -579,6 +610,7 @@ export default connect(
 			productsLoaded,
 			siteGoals: getSiteGoals( state ),
 			surveyVertical: getSurveyVertical( state ),
+			selectedSite: getSite( state, ownProps.signupDependencies.siteSlug ),
 		};
 	},
 	{

@@ -5,7 +5,7 @@
 
 .keyed-suggestions__category {
 	background-color: var( --color-neutral-0 );
-	border: 1px solid darken( $gray-light, 10% );
+	border: 1px solid var( --color-neutral-50 );
 	border-top: 0;
 	padding: 4px 8px;
 	font-size: 13px;
@@ -30,18 +30,18 @@
 .keyed-suggestions__value {
 	display: flex;
 	padding: 10px;
-	background: $white;
-	border: 1px solid darken( $gray-light, 10% );
+	background: var( --color-white );
+	border: 1px solid var( --color-neutral-50 );
 	border-top: 0;
 	font-size: 15px;
 	cursor: pointer;
 
 	&.has-highlight {
 		background-color: var( --color-primary );
-		color: $white;
+		color: var( --color-white );
 
 		.keyed-suggestions__value-description {
-			color: $white;
+			color: var( --color-white );
 		}
 	}
 }

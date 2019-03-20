@@ -18,6 +18,11 @@ import JetpackPressableLogo from './pressable';
 import JetpackLiquidWebLogo from './liquidweb';
 import JetpackPartnerLogoGroup from './partner-logo-group';
 
+/**
+ * Style dependencies
+ */
+import './style.scss';
+
 export class JetpackHeader extends PureComponent {
 	static displayName = 'JetpackHeader';
 
@@ -78,17 +83,16 @@ export class JetpackHeader extends PureComponent {
 				// This is a raster logo that contains the Jetpack logo already.
 				return <JetpackMileswebLogo />;
 
-
 			case 'liquidweb':
-					return (
-						<JetpackPartnerLogoGroup
-							width={ width || 488 }
-							viewBox="0 0 1034 150"
-							partnerName="Liquid Web"
-						>
-							<JetpackLiquidWebLogo />
-						</JetpackPartnerLogoGroup>
-					);
+				return (
+					<JetpackPartnerLogoGroup
+						width={ width || 488 }
+						viewBox="0 0 1034 150"
+						partnerName="Liquid Web"
+					>
+						<JetpackLiquidWebLogo />
+					</JetpackPartnerLogoGroup>
+				);
 			default:
 				return <JetpackLogo full size={ width || 45 } />;
 		}

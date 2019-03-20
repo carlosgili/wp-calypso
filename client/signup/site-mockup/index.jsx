@@ -14,13 +14,11 @@ import { translate } from 'i18n-calypso';
  */
 import SiteMockup from './site-mockup';
 import { getSiteType } from 'state/signup/steps/site-type/selectors';
-import {
-	getSiteVerticalName,
-	getSiteVerticalPreview,
-} from 'state/signup/steps/site-vertical/selectors';
+import { getSiteVerticalPreview } from 'state/signup/steps/site-vertical/selectors';
 import { getSiteInformation } from 'state/signup/steps/site-information/selectors';
 import { getSiteStyle } from 'state/signup/steps/site-style/selectors';
 import { loadFont, getCSS } from 'lib/signup/font-loader';
+import Gridicon from 'gridicons';
 
 /**
  * Style dependencies
@@ -34,7 +32,6 @@ class SiteMockups extends Component {
 		siteStyle: PropTypes.string,
 		siteType: PropTypes.string,
 		title: PropTypes.string,
-		vertical: PropTypes.string,
 		verticalPreviewContent: PropTypes.string,
 	};
 
@@ -44,7 +41,6 @@ class SiteMockups extends Component {
 		siteStyle: '',
 		siteType: '',
 		title: '',
-		vertical: '',
 		verticalPreviewContent: '',
 	};
 
@@ -149,15 +145,26 @@ class SiteMockups extends Component {
 		return (
 			<div className={ siteMockupClasses }>
 				{ ! this.state.fontError && <style>{ fontStyle }</style> }
-				<SiteMockup size="desktop" { ...otherProps } />
-				<SiteMockup size="mobile" { ...otherProps } />
+
+				<div className="site-mockup__help-tip">
+					<p>
+						{ translate(
+							'Scroll down to see your website. Once you complete setup you’ll be able to customize it further.'
+						) }
+					</p>
+					<Gridicon icon="chevron-down" />
+				</div>
+
+				<div className="site-mockup__devices">
+					<SiteMockup size="desktop" { ...otherProps } />
+					<SiteMockup size="mobile" { ...otherProps } />
+				</div>
 			</div>
 		);
 	}
 }
 
 export default connect( state => {
-	const vertical = getSiteVerticalName( state );
 	const siteInformation = getSiteInformation( state );
 	return {
 		title: siteInformation.title || translate( 'Your New Website' ),
@@ -165,7 +172,6 @@ export default connect( state => {
 		phone: siteInformation.phone,
 		siteStyle: getSiteStyle( state ),
 		siteType: getSiteType( state ),
-		vertical,
 		verticalPreviewContent: getSiteVerticalPreview( state ),
 	};
 } )( SiteMockups );

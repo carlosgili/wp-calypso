@@ -3,6 +3,7 @@
  * External dependencies
  */
 import React, { PureComponent, Fragment } from 'react';
+import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { isEmpty, noop, isFunction } from 'lodash';
 import { translate } from 'i18n-calypso';
@@ -62,7 +63,6 @@ function SiteMockupContent( { content, title, tagline, renderContent } ) {
 }
 
 function SiteMockupOutlines() {
-	console.log( 'SiteMockupOutlines' );
 	return (
 		<Fragment>
 			<div className="site-mockup__outline is-title" />
@@ -84,15 +84,21 @@ export class SiteMockup extends PureComponent {
 	static defaultProps = {
 		size: 'mobile',
 		onClick: noop,
+		isLoading: false,
+	};
+
+	static propTypes = {
+		isLoading: PropTypes.bool,
 	};
 
 	render() {
-		const { size, content, renderContent, siteType, siteStyle, title, tagline } = this.props;
+		const { size, content, isLoading = true, renderContent, siteType, siteStyle, title, tagline } = this.props;
 		const classes = classNames( 'site-mockup__viewport', `is-${ size }`, {
 			[ `is-${ siteType }` ]: !! siteType,
 			[ `is-${ siteStyle }` ]: !! siteStyle,
+			[ 'is-loading' ]: isLoading,
 		} );
-		// console.log( { renderContent, size }, isEmpty( content ), isFunction( renderContent ) );
+
 		/* eslint-disable jsx-a11y/click-events-have-key-events,jsx-a11y/no-static-element-interactions */
 		return (
 			<div className={ classes } onClick={ this.props.onClick }>

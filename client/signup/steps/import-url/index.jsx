@@ -27,6 +27,7 @@ import {
 	fetchIsSiteImportable,
 	setImportOriginSiteDetails,
 	setNuxUrlInputValue,
+	somethingSomething,
 } from 'state/importer-nux/actions';
 import {
 	getNuxUrlError,
@@ -206,6 +207,22 @@ class ImportURLStepComponent extends Component {
 			return;
 		}
 
+		const { stepName, siteDetails } = this.props;
+		const { urlInputValue, sitePreviewUrl } = this.props;
+		const sitePreviewedAlready = this.normalizeUrl( urlInputValue ) === sitePreviewUrl;
+
+		console.log({ sitePreviewedAlready })
+
+		if ( sitePreviewedAlready && has( siteDetails, siteUrl )  ) {
+			return SignupActions.submitSignupStep( { stepName }, [], {
+				importSiteDetails: siteDetails,
+				importUrl: siteDetails.siteUrl,
+				themeSlugWithRepo: 'pub/radcliffe-2',
+			} );
+		}
+
+		// this.props.somethingSomething( { siteUrl: this.props.urlInputValue } )
+
 		// Clear out the site details so the step knows when to progress
 		this.props.setImportOriginSiteDetails();
 
@@ -350,6 +367,7 @@ class ImportURLStepComponent extends Component {
 
 				<SiteMockup
 					size="desktop"
+					isLoading={ isLoading || loadingPreviewImage }
 					urlValue={ translate( 'Preview: %(url)s', {
 						args: {
 							url: this.props.urlInputValue,
@@ -431,6 +449,7 @@ export default flow(
 			recordTracksEvent,
 			infoNotice,
 			removeNotice,
+			somethingSomething,
 		}
 	),
 	localize

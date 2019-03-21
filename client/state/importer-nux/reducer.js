@@ -16,7 +16,8 @@ import { registerActionForward } from 'lib/redux-bridge';
 
 registerActionForward( IMPORTS_IMPORT_CANCEL );
 
-export const urlInputValue = createReducer( '', {
+export const urlInputValue = createReducer( 'https://smt593.wixsite.com/wowz/static-page', {
+// export const urlInputValue = createReducer( '', {
 	[ IMPORTER_NUX_URL_INPUT_SET ]: ( state, { value = '' } ) => value,
 	[ 'FLUX_IMPORTS_IMPORT_CANCEL' ]: () => '',
 } );

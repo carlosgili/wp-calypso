@@ -9,6 +9,8 @@ import {
 	IMPORT_IS_SITE_IMPORTABLE_START_FETCH,
 } from 'state/action-types';
 import wpLib from 'lib/wp';
+import SignupActions from 'lib/signup/actions';
+
 const wpcom = wpLib.undocumented();
 
 export const setNuxUrlInputValue = value => ( {
@@ -40,3 +42,10 @@ export const fetchIsSiteImportable = site_url => dispatch => {
 		)
 		.catch( error => dispatch( { type: IMPORT_IS_SITE_IMPORTABLE_ERROR, error } ) );
 };
+
+export const somethingSomething = ( { siteUrl } ) => dispatch => {
+
+	dispatch( setImportOriginSiteDetails() );
+
+	return dispatch( fetchIsSiteImportable( siteUrl ) )
+}

@@ -30,7 +30,7 @@ describe( `[${ host }] Jetpack Sites on Calypso - Existing Plugins: (${ screenSi
 	before( async function() {
 		await driverManager.clearCookiesAndDeleteLocalStorage( driver );
 
-		let loginFlow = new LoginFlow( driver, 'jetpackUser' + host );
+		const loginFlow = new LoginFlow( driver );
 		await loginFlow.loginAndSelectManagePlugins();
 	} );
 

@@ -33,7 +33,7 @@ describe( `[${ host }] Previewing Themes: (${ screenSize })`, function() {
 	this.timeout( mochaTimeOut );
 
 	describe( 'Previewing Themes @parallel @jetpack', function() {
-		step( 'Delete Cookies and Login', async function() {
+		step( 'Can login and select themes', async function() {
 			let loginFlow = new LoginFlow( driver );
 			await loginFlow.loginAndSelectThemes();
 		} );
